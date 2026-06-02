@@ -703,7 +703,10 @@ g("btnConfirm").onclick = async function(){
   const chien=g("fChien").value.trim(), err=g("modalError");
   err.style.display="none";
   if(!chien){ err.textContent="Merci d entrer le nom de ton chien."; err.style.display="block"; return; }
-  const ins={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+curC.heure+"h",nom:me.displayName||me.email,chien:chien,email:me.email,heure:new Date().toLocaleString("fr-FR"),action:"inscription"};
+  const presEl=document.querySelector('input[name="presence"]:checked');
+  const presence=presEl?presEl.value:"present";
+  var hok=(curC.heure<10?"0":"")+curC.heure+"h"+(curC.min&&curC.min>0?(curC.min<10?"0":"")+curC.min:"00");
+  const ins={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+hok,nom:me.displayName||me.email,chien:chien,email:me.email,heure:new Date().toLocaleString("fr-FR"),action:"inscription",presence:presence};
   try{ await postToSheet(ins); }catch(e){}
   allIns.push(ins);
   const ic=g("okIcon"); ic.className="ok-icon ok-green"; ic.textContent="OK";
