@@ -554,7 +554,7 @@ onAuthStateChanged(auth, async function(user){
     g("calContainer").innerHTML = "<div style='text-align:center;padding:2rem;color:var(--muted);font-size:14px;font-weight:600;'>Chargement...</div>";
     cours = await loadCours();
     await loadInscriptions();
-    await loadMessageFromSheet();
+    loadMessageFromSheet(); // sans await pour ne pas bloquer
     renderCal();
     renderInscrits();
     if(isAdm){ renderAdminCours(); renderAdminTable(); }
