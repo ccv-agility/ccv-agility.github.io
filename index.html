@@ -615,17 +615,25 @@ function renderCal(){
       dot.className="cours-dot "+(annule?"dot-annule":past?"dot-passe":inscrit?"dot-inscrit":"dot-dispo");
       const info=document.createElement("div"); info.className="cours-info";
       var hstr=(c.heure<10?"0":"")+c.heure+"h"+(c.min&&c.min>0?(c.min<10?"0":"")+c.min:"00"); info.innerHTML="<div class='cours-nom'>"+c.nom+"</div><div class='cours-date-heure'>"+hstr+(annule?" — ANNULE":past?" — Termine":"")+"</div>";
-      const right=document.createElement("div");
+      const right=document.createElement("div"); right.style.textAlign="right";
       const ins=getInsForCours(c);
+      const nbPres=ins.filter(function(i){ return (i.presence||"present").toLowerCase()!=="absent"; }).length;
+      const nbAbs=ins.filter(function(i){ return (i.presence||"present").toLowerCase()==="absent"; }).length;
+      const compteur = ins.length>0
+        ? "<div style='font-size:11px;margin-top:4px;display:flex;gap:6px;justify-content:flex-end;'>"
+          +"<span style='background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:20px;font-weight:700;'>"+nbPres+" present"+(nbPres>1?"s":"")+"</span>"
+          +(nbAbs>0?"<span style='background:var(--orange-light);color:var(--orange);padding:2px 8px;border-radius:20px;font-weight:700;'>"+nbAbs+" absent"+(nbAbs>1?"s":"")+"</span>":"")
+          +"</div>"
+        : "";
       if(annule){
         right.innerHTML="<span class='cours-tag tag-annule'>Annule</span>";
       } else if(past){
-        right.innerHTML="<span class='cours-tag tag-passe'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>";
+        right.innerHTML="<span class='cours-tag tag-passe'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>"+compteur;
       } else if(inscrit){
-        right.innerHTML="<span class='cours-tag tag-inscrit'>Inscrit(e)</span><div class='cours-nb' style='margin-top:3px;'>"+ins.length+" / total</div>";
+        right.innerHTML="<span class='cours-tag tag-inscrit'>Inscrit(e)</span>"+compteur;
         item.onclick=(function(cc){ return function(){ openDes(cc); }; })(c);
       } else {
-        right.innerHTML="<span class='cours-nb'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>";
+        right.innerHTML="<span class='cours-nb'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>"+compteur;
         item.onclick=(function(cc){ return function(){ openIns(cc); }; })(c);
       }
       item.appendChild(dot); item.appendChild(info); item.appendChild(right);
@@ -641,28 +649,52 @@ function renderInscrits(){
   const mon=getMondayFromDate(new Date(),calOffset);
   const dim=new Date(mon); dim.setDate(mon.getDate()+6);
   const monStr=dateStr(mon), dimStr=dateStr(dim);
-  // Normaliser les dates pour comparaison
   const coursWeek=cours.filter(function(c){
     const cd=dateStr(parseDate(c.date));
     return cd>=monStr&&cd<=dimStr&&!c.annule;
-  });
-  console.log("coursWeek pour inscrits:", coursWeek.length, "allIns:", allIns.length);
+  }).sort(function(a,b){ return parseDate(a.date)-parseDate(b.date)||a.heure-b.heure||(a.min||0)-(b.min||0); });
   const tous=[];
   coursWeek.forEach(function(c){
     getInsForCours(c).forEach(function(i){ tous.push(Object.assign({},i,{coursNom:c.nom,coursDate:c.date,coursHeure:c.heure,coursMin:c.min||0})); });
   });
   if(tous.length===0){ list.innerHTML="<div class='empty-msg'>Aucune inscription cette semaine.</div>"; return; }
-  tous.sort(function(a,b){ return a.coursDate.localeCompare(b.coursDate)||a.coursHeure-b.coursHeure; });
-  list.innerHTML=tous.map(function(i){
-    const d=parseDate(i.coursDate);
-    var hmin=i.coursMin&&i.coursMin>0?(i.coursMin<10?"0":"")+i.coursMin:"00";
-    const label=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" "+i.coursHeure+"h"+hmin;
-    const presVal = (i.presence||"present").toLowerCase().trim();
-    const presTag = presVal==="absent"
-      ? "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--orange-light);color:var(--orange);font-weight:700;margin-left:6px;'>Absent</span>"
-      : "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:#E8F5E9;color:#2E7D32;font-weight:700;margin-left:6px;'>Present</span>";
-    return "<div class='inscrit-row'><span class='inscrit-badge'>"+label+"</span><span class='inscrit-nom'>"+i.nom+"</span><span class='inscrit-chien'> - "+i.chien+"</span>"+presTag+"</div>";
-  }).join("");
+  tous.sort(function(a,b){ return parseDate(a.coursDate)-parseDate(b.coursDate)||a.coursHeure-b.coursHeure||(a.coursMin||0)-(b.coursMin||0); });
+  // Grouper par cours
+  var grouped={}, groupOrder=[];
+  tous.forEach(function(i){
+    var key=i.coursDate+"|"+i.coursHeure+"|"+(i.coursMin||0);
+    if(!grouped[key]){
+      var d=parseDate(i.coursDate);
+      var hmin=i.coursMin&&i.coursMin>0?(i.coursMin<10?"0":"")+i.coursMin:"00";
+      var label=d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})+" - "+i.coursHeure+"h"+hmin;
+      grouped[key]={label:label,items:[]};
+      groupOrder.push(key);
+    }
+    grouped[key].items.push(i);
+  });
+  var out="";
+  groupOrder.forEach(function(key){
+    var grp=grouped[key];
+    var nbPres=grp.items.filter(function(i){ return (i.presence||"present").toLowerCase()!=="absent"; }).length;
+    var nbAbs=grp.items.filter(function(i){ return (i.presence||"present").toLowerCase()==="absent"; }).length;
+    out+="<div style='margin-top:14px;margin-bottom:6px;padding:8px 12px;background:var(--navy);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:space-between;'>";
+    out+="<span style='font-size:13px;font-weight:900;color:white;text-transform:capitalize;'>"+grp.label+"</span>";
+    out+="<span style='display:flex;gap:6px;'>";
+    out+="<span style='font-size:11px;background:#E8F5E9;color:#2E7D32;padding:2px 10px;border-radius:20px;font-weight:700;'>"+nbPres+" present"+(nbPres>1?"s":"")+"</span>";
+    if(nbAbs>0) out+="<span style='font-size:11px;background:var(--orange-light);color:var(--orange);padding:2px 10px;border-radius:20px;font-weight:700;'>"+nbAbs+" absent"+(nbAbs>1?"s":"")+"</span>";
+    out+="</span></div>";
+    grp.items.forEach(function(i){
+      var pv=(i.presence||"present").toLowerCase().trim();
+      var pt=pv==="absent"
+        ? "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--orange-light);color:var(--orange);font-weight:700;margin-left:auto;'>Absent</span>"
+        : "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:#E8F5E9;color:#2E7D32;font-weight:700;margin-left:auto;'>Present</span>";
+      out+="<div class='inscrit-row'>"+
+        "<span class='inscrit-nom'>"+i.nom+"</span>"+
+        "<span class='inscrit-chien'> - "+i.chien+"</span>"+pt+
+        "</div>";
+    });
+  });
+  list.innerHTML=out;
 }
 
 // MODALS
