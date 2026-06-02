@@ -309,7 +309,7 @@ const FBCFG = {
   messagingSenderId: "338841120942",
   appId: "1:338841120942:web:bf91c5aaa302bd3f0cfd3f"
 };
-const SHEET = "https://script.google.com/macros/s/AKfycbxYkcwO6ByimeT8Uhut8bLAO-7dab1ucTcY0pjDuFITKFYc0iuWwP9fpxcs7fETcL9h/exec";
+const SHEET = "https://script.google.com/macros/s/AKfycbz1PcymPkC01y95ABHPR0Fgz6Cx2YvL09DiMho9kUm3K6kMYhmVPjR3pXZoOV2kAT961A/exec";
 const ADMINS = ["martinezlaetitia7@gmail.com","agility.ccv@gmail.com"];
 
 const fbapp = initializeApp(FBCFG);
@@ -343,8 +343,43 @@ function fetchJsonp(url) {
 }
 
 async function fetchGAS(url) {
-  // Utiliser JSONP pour les GET (contourne CORS)
   return fetchJsonp(url);
+}
+
+function postToSheet(data) {
+  return new Promise(function(resolve) {
+    // Creer un iframe cache pour recevoir la reponse
+    const iframeId = "post_iframe_"+Date.now();
+    const iframe = document.createElement("iframe");
+    iframe.name = iframeId;
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+
+    // Creer un formulaire cache
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = SHEET;
+    form.target = iframeId;
+    form.style.display = "none";
+
+    // Ajouter les donnees comme champ cache
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "payload";
+    input.value = JSON.stringify(data);
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+
+    // Nettoyer apres envoi
+    setTimeout(function() {
+      try { document.body.removeChild(form); } catch(e) {}
+      try { document.body.removeChild(iframe); } catch(e) {}
+      resolve({status:"ok"});
+    }, 2000);
+
+    form.submit();
+  });
 }
 
 async function loadCours(){
@@ -352,19 +387,28 @@ async function loadCours(){
     console.log("Debut loadCours...");
     const data = await fetchGAS(SHEET+"?type=cours");
     console.log("Reponse loadCours:", data ? data.length : 0, "elements");
-    if(Array.isArray(data) && data.length>0) return data;
-    console.log("Sheet vide, generation cours par defaut");
-    const defaut = getDefautCours();
-    saveCours(defaut); // pas d'await pour ne pas bloquer
-    return defaut;
+    if(Array.isArray(data) && data.length>0){
+      // Mettre en cache local
+      try{ localStorage.setItem("ccv_cours_cache", JSON.stringify(data)); }catch(e){}
+      return data;
+    }
+    // Essayer le cache local
+    const cache = localStorage.getItem("ccv_cours_cache");
+    if(cache){ const c=JSON.parse(cache); if(c && c.length>0) return c; }
+    return getDefautCours();
   }catch(e){ 
     console.log("Erreur loadCours:", e.message);
+    // Essayer le cache local en cas d'erreur
+    try{
+      const cache = localStorage.getItem("ccv_cours_cache");
+      if(cache){ const c=JSON.parse(cache); if(c && c.length>0) return c; }
+    }catch(e2){}
     return getDefautCours(); 
   }
 }
 async function saveCours(c){
   try{
-    await fetch(SHEET, {method:"POST", mode:"no-cors", body:JSON.stringify({action:"saveCours", cours:c}), headers:{"Content-Type":"text/plain"}, headers:{"Content-Type":"application/json"}});
+    await postToSheet({action:"saveCours", cours:c});
   }catch(e){}
 }
 
@@ -656,7 +700,7 @@ g("btnConfirm").onclick = async function(){
   err.style.display="none";
   if(!chien){ err.textContent="Merci d entrer le nom de ton chien."; err.style.display="block"; return; }
   const ins={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+curC.heure+"h",nom:me.displayName||me.email,chien:chien,email:me.email,heure:new Date().toLocaleString("fr-FR"),action:"inscription"};
-  try{ await fetch(SHEET,{method:"POST",mode:"no-cors",body:JSON.stringify(ins),headers:{"Content-Type":"text/plain"}}); }catch(e){}
+  try{ await postToSheet(ins); }catch(e){}
   allIns.push(ins);
   const ic=g("okIcon"); ic.className="ok-icon ok-green"; ic.textContent="OK";
   g("okTitle").textContent="Inscription confirmee !";
@@ -676,7 +720,7 @@ g("btnDesinscrire").onclick = async function(){
     const insRetire=allIns.find(function(x){ return x.coursId===curC.id&&x.email===emailVal; });
     if(insRetire) nomsRetires.push(insRetire.chien);
     allIns=allIns.filter(function(x){ return !(x.coursId===curC.id&&x.email===emailVal); });
-    try{ await fetch(SHEET,{method:"POST",mode:"no-cors",body:JSON.stringify({action:"desinscription",coursId:curC.id,email:emailVal}),headers:{"Content-Type":"text/plain"},headers:{"Content-Type":"application/json"}}); }catch(e){}
+    try{ await postToSheet({action:"desinscription",coursId:curC.id,email:emailVal}); }catch(e){}
   }
   const ic=g("okIcon"); ic.className="ok-icon ok-orange"; ic.textContent="X";
   g("okTitle").textContent="Desinscription effectuee";
