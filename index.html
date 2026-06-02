@@ -144,6 +144,13 @@ tr:hover td{background:var(--gray);}
 .chien-check:hover{border-color:var(--orange);}
 .chien-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;}
 .chien-check label{font-size:14px;font-weight:700;color:var(--navy);cursor:pointer;}
+.banniere{display:none;margin-bottom:1.2rem;border-radius:var(--radius);padding:1rem 1.4rem;border-left:4px solid var(--orange);background:var(--orange-light);box-shadow:0 2px 8px rgba(232,97,26,0.1);}
+.banniere-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.banniere-titre{font-size:13px;font-weight:900;color:var(--orange);text-transform:uppercase;letter-spacing:0.04em;}
+.banniere-msg{font-size:14px;font-weight:600;color:var(--navy);line-height:1.5;}
+.banniere-date{font-size:11px;color:var(--muted);font-weight:600;}
+.admin-msg-form{background:var(--orange-light);border-radius:var(--radius-sm);padding:1.2rem;margin-bottom:1.4rem;border:1px solid var(--orange-mid);}
+.admin-msg-form h4{font-size:13px;font-weight:800;color:var(--orange);margin-bottom:1rem;}
 .page{display:none;}
 .page.active{display:block;}
 #authPage.active{display:flex;}
@@ -213,6 +220,15 @@ tr:hover td{background:var(--gray);}
     </div>
   </div>
 
+  <!-- BANNIERE MESSAGE ADMIN -->
+  <div class="banniere" id="banniere">
+    <div class="banniere-header">
+      <span class="banniere-titre">&#128276; Message du club</span>
+      <span class="banniere-date" id="banniereDate"></span>
+    </div>
+    <div class="banniere-msg" id="banniereMsg"></div>
+  </div>
+
   <div id="calContainer"></div>
 
   <div class="section-card">
@@ -222,6 +238,15 @@ tr:hover td{background:var(--gray);}
 
   <div class="admin-card" id="adminSection">
     <div class="admin-title">Admin - Gestion des cours</div>
+
+    <div class="admin-msg-form">
+      <h4>&#128276; Message aux membres</h4>
+      <div class="fg" style="margin-bottom:10px;">
+        <label>Message (laisse vide pour supprimer)</label>
+        <textarea id="adminMsgInput" rows="3" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <button class="btn-add" id="btnSaveMsg" style="width:100%;">Publier le message</button>
+    </div>
 
     <div class="add-form">
       <h4>Ajouter un cours</h4>
@@ -327,7 +352,7 @@ const FBCFG = {
   messagingSenderId: "338841120942",
   appId: "1:338841120942:web:bf91c5aaa302bd3f0cfd3f"
 };
-const SHEET = "https://script.google.com/macros/s/AKfycbyIQnkMHD23dj9JwKlxapBUAHE0AZrsyVwxDkZYa1viEiisZs44R06UU26ZRBnvrRWrgw/exec";
+const SHEET = "https://script.google.com/macros/s/AKfycbx97dg_ZMj_k1B8pF5AsfZgX1hn22uEFBQKNj5_U0sQIPfvc0zbT91PR-wM26d5W2eH9A/exec";
 const ADMINS = ["martinezlaetitia7@gmail.com","agility.ccv@gmail.com"];
 
 const fbapp = initializeApp(FBCFG);
@@ -529,6 +554,7 @@ onAuthStateChanged(auth, async function(user){
     g("calContainer").innerHTML = "<div style='text-align:center;padding:2rem;color:var(--muted);font-size:14px;font-weight:600;'>Chargement...</div>";
     cours = await loadCours();
     await loadInscriptions();
+    await loadMessageFromSheet();
     renderCal();
     renderInscrits();
     if(isAdm){ renderAdminCours(); renderAdminTable(); }
@@ -792,6 +818,8 @@ g("btnDesinscrire").onclick = async function(){
 };
 
 // ADMIN
+g("btnSaveMsg").onclick = async function(){ await saveMessage(); };
+
 g("btnAddCours").onclick = async function(){
   const date=g("newDate").value, heureVal=g("newHeure").value, nom=g("newNom").value.trim()||"Cours agility";
   const [hStr,mStr]=heureVal.split(":");
