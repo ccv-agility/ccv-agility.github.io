@@ -657,9 +657,10 @@ function renderInscrits(){
     const d=parseDate(i.coursDate);
     var hmin=i.coursMin&&i.coursMin>0?(i.coursMin<10?"0":"")+i.coursMin:"00";
     const label=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" "+i.coursHeure+"h"+hmin;
-    const presTag = i.presence==="absent"
+    const presVal = (i.presence||"present").toLowerCase().trim();
+    const presTag = presVal==="absent"
       ? "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--orange-light);color:var(--orange);font-weight:700;margin-left:6px;'>Absent</span>"
-      : "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--navy-light);color:var(--navy);font-weight:700;margin-left:6px;'>Present</span>";
+      : "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:#E8F5E9;color:#2E7D32;font-weight:700;margin-left:6px;'>Present</span>";
     return "<div class='inscrit-row'><span class='inscrit-badge'>"+label+"</span><span class='inscrit-nom'>"+i.nom+"</span><span class='inscrit-chien'> - "+i.chien+"</span>"+presTag+"</div>";
   }).join("");
 }
@@ -703,8 +704,9 @@ g("btnConfirm").onclick = async function(){
   const chien=g("fChien").value.trim(), err=g("modalError");
   err.style.display="none";
   if(!chien){ err.textContent="Merci d entrer le nom de ton chien."; err.style.display="block"; return; }
-  const presEl=document.querySelector('input[name="presence"]:checked');
-  const presence=presEl?presEl.value:"present";
+  // Lire le statut presence par ID
+  const presence = g("rAbsent") && g("rAbsent").checked ? "absent" : "present";
+  console.log("Presence selectionnee:", presence);
   var hok=(curC.heure<10?"0":"")+curC.heure+"h"+(curC.min&&curC.min>0?(curC.min<10?"0":"")+curC.min:"00");
   const ins={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+hok,nom:me.displayName||me.email,chien:chien,email:me.email,heure:new Date().toLocaleString("fr-FR"),action:"inscription",presence:presence};
   try{ await postToSheet(ins); }catch(e){}
