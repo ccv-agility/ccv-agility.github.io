@@ -130,6 +130,9 @@ tr:hover td{background:var(--gray);}
 .ok-icon{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:20px;font-weight:900;color:white;}
 .ok-green{background:linear-gradient(135deg,#2E7D32,#66BB6A);}
 .ok-orange{background:linear-gradient(135deg,var(--orange),var(--orange2));}
+.radio-presence input[type=radio]:checked + span { font-weight:800; }
+#lblPresent:has(input:checked){ border-color:var(--navy); background:var(--navy-light); }
+#lblAbsent:has(input:checked){ border-color:var(--orange); background:var(--orange-light); }
 .chien-check{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-sm);background:var(--gray);margin-bottom:8px;cursor:pointer;border:1.5px solid transparent;transition:border 0.15s;}
 .chien-check:hover{border-color:var(--orange);}
 .chien-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;}
@@ -242,7 +245,7 @@ tr:hover td{background:var(--gray);}
     <div class="admin-subtitle">Toutes les inscriptions</div>
     <div class="admin-table-wrap">
       <table>
-        <thead><tr><th>Date</th><th>Creneau</th><th>Nom</th><th>Chien</th><th>Email</th></tr></thead>
+        <thead><tr><th>Date</th><th>Creneau</th><th>Nom</th><th>Chien</th><th>Email</th><th>Presence</th></tr></thead>
         <tbody id="adminTable"></tbody>
       </table>
       <div id="adminEmpty" class="empty-msg" style="display:none;">Aucune inscription.</div>
@@ -258,6 +261,19 @@ tr:hover td{background:var(--gray);}
       <div class="fg">
         <label>Nom du 2e chien <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(optionnel)</span></label>
         <input type="text" id="fChien2" placeholder="Ex : Rex (laisser vide si un seul chien)">
+      </div>
+      <div class="fg">
+        <label>Presence</label>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--border);cursor:pointer;flex:1;font-size:14px;font-weight:700;text-transform:none;letter-spacing:0;" id="lblPresent">
+            <input type="radio" name="presence" id="rPresent" value="present" checked style="accent-color:var(--navy);width:16px;height:16px;">
+            <span>&#10003; Present(e)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--border);cursor:pointer;flex:1;font-size:14px;font-weight:700;text-transform:none;letter-spacing:0;" id="lblAbsent">
+            <input type="radio" name="presence" id="rAbsent" value="absent" style="accent-color:var(--orange);width:16px;height:16px;">
+            <span>&#10007; Absent(e)</span>
+          </label>
+        </div>
       </div>
       <div class="alert-err" id="modalError"></div>
       <div class="modal-actions">
@@ -293,7 +309,7 @@ const FBCFG = {
   messagingSenderId: "338841120942",
   appId: "1:338841120942:web:bf91c5aaa302bd3f0cfd3f"
 };
-const SHEET = "https://script.google.com/macros/s/AKfycbz_6Hik-SlaF5GxIuTG6Yxmaa-3EoE7UZYiUG5WEXuaL_5X6wQpV76DnnWh9W1_jp2DjA/exec";
+const SHEET = "https://script.google.com/macros/s/AKfycbxYkcwO6ByimeT8Uhut8bLAO-7dab1ucTcY0pjDuFITKFYc0iuWwP9fpxcs7fETcL9h/exec";
 const ADMINS = ["martinezlaetitia7@gmail.com","agility.ccv@gmail.com"];
 
 const fbapp = initializeApp(FBCFG);
@@ -348,7 +364,7 @@ async function loadCours(){
 }
 async function saveCours(c){
   try{
-    await fetch(SHEET, {method:"POST", body:JSON.stringify({action:"saveCours", cours:c}), headers:{"Content-Type":"application/json"}});
+    await fetch(SHEET, {method:"POST", mode:"no-cors", body:JSON.stringify({action:"saveCours", cours:c}), headers:{"Content-Type":"text/plain"}, headers:{"Content-Type":"application/json"}});
   }catch(e){}
 }
 
@@ -591,8 +607,12 @@ function renderInscrits(){
   tous.sort(function(a,b){ return a.coursDate.localeCompare(b.coursDate)||a.coursHeure-b.coursHeure; });
   list.innerHTML=tous.map(function(i){
     const d=parseDate(i.coursDate);
-    var hmin=i.coursMin&&i.coursMin>0?(i.coursMin<10?"0":"")+i.coursMin:"00"; const label=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" "+i.coursHeure+"h"+hmin;
-    return "<div class='inscrit-row'><span class='inscrit-badge'>"+label+"</span><span class='inscrit-nom'>"+i.nom+"</span><span class='inscrit-chien'> - "+i.chien+"</span></div>";
+    var hmin=i.coursMin&&i.coursMin>0?(i.coursMin<10?"0":"")+i.coursMin:"00";
+    const label=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" "+i.coursHeure+"h"+hmin;
+    const presTag = i.presence==="absent"
+      ? "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--orange-light);color:var(--orange);font-weight:700;margin-left:6px;'>Absent</span>"
+      : "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--navy-light);color:var(--navy);font-weight:700;margin-left:6px;'>Present</span>";
+    return "<div class='inscrit-row'><span class='inscrit-badge'>"+label+"</span><span class='inscrit-nom'>"+i.nom+"</span><span class='inscrit-chien'> - "+i.chien+"</span>"+presTag+"</div>";
   }).join("");
 }
 
@@ -636,7 +656,7 @@ g("btnConfirm").onclick = async function(){
   err.style.display="none";
   if(!chien){ err.textContent="Merci d entrer le nom de ton chien."; err.style.display="block"; return; }
   const ins={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+curC.heure+"h",nom:me.displayName||me.email,chien:chien,email:me.email,heure:new Date().toLocaleString("fr-FR"),action:"inscription"};
-  try{ await fetch(SHEET,{method:"POST",redirect:"follow",body:JSON.stringify(ins),headers:{"Content-Type":"application/json"}}); }catch(e){}
+  try{ await fetch(SHEET,{method:"POST",mode:"no-cors",body:JSON.stringify(ins),headers:{"Content-Type":"text/plain"}}); }catch(e){}
   allIns.push(ins);
   const ic=g("okIcon"); ic.className="ok-icon ok-green"; ic.textContent="OK";
   g("okTitle").textContent="Inscription confirmee !";
@@ -656,7 +676,7 @@ g("btnDesinscrire").onclick = async function(){
     const insRetire=allIns.find(function(x){ return x.coursId===curC.id&&x.email===emailVal; });
     if(insRetire) nomsRetires.push(insRetire.chien);
     allIns=allIns.filter(function(x){ return !(x.coursId===curC.id&&x.email===emailVal); });
-    try{ await fetch(SHEET,{method:"POST",redirect:"follow",body:JSON.stringify({action:"desinscription",coursId:curC.id,email:emailVal}),headers:{"Content-Type":"application/json"}}); }catch(e){}
+    try{ await fetch(SHEET,{method:"POST",mode:"no-cors",body:JSON.stringify({action:"desinscription",coursId:curC.id,email:emailVal}),headers:{"Content-Type":"text/plain"},headers:{"Content-Type":"application/json"}}); }catch(e){}
   }
   const ic=g("okIcon"); ic.className="ok-icon ok-orange"; ic.textContent="X";
   g("okTitle").textContent="Desinscription effectuee";
@@ -741,7 +761,8 @@ function renderAdminTable(){
   empty.style.display="none";
   ins.slice().reverse().forEach(function(i){
     const tr=document.createElement("tr");
-    tr.innerHTML="<td>"+(i.date||"")+"</td><td>"+(i.creneau||"")+"</td><td>"+(i.nom||"")+"</td><td>"+(i.chien||"")+"</td><td>"+(i.email||"")+"</td>";
+    const presStyle=i.presence==="absent"?"color:var(--orange);font-weight:700;":"color:var(--navy);font-weight:700;";
+    tr.innerHTML="<td>"+(i.date||"")+"</td><td>"+(i.creneau||"")+"</td><td>"+(i.nom||"")+"</td><td>"+(i.chien||"")+"</td><td>"+(i.email||"")+"</td><td style='"+presStyle+"'>"+(i.presence==="absent"?"Absent":"Present")+"</td>";
     tbody.appendChild(tr);
   });
 }
