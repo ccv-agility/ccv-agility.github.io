@@ -293,16 +293,42 @@ const FBCFG = {
   messagingSenderId: "338841120942",
   appId: "1:338841120942:web:bf91c5aaa302bd3f0cfd3f"
 };
-const SHEET = "/api";
+const SHEET = "https://script.google.com/macros/s/AKfycbz_6Hik-SlaF5GxIuTG6Yxmaa-3EoE7UZYiUG5WEXuaL_5X6wQpV76DnnWh9W1_jp2DjA/exec";
 const ADMINS = ["martinezlaetitia7@gmail.com","agility.ccv@gmail.com"];
 
 const fbapp = initializeApp(FBCFG);
 const auth = getAuth(fbapp);
 
 // Cours = liste de dates precises {id, date:"2026-06-03", heure:18, nom:"Cours agility", annule:false}
+function fetchJsonp(url) {
+  return new Promise(function(resolve, reject){
+    const cb = "cb_"+Date.now();
+    const script = document.createElement("script");
+    const timeout = setTimeout(function(){
+      reject(new Error("timeout"));
+      delete window[cb];
+      if(document.body.contains(script)) document.body.removeChild(script);
+    }, 10000);
+    window[cb] = function(data){
+      clearTimeout(timeout);
+      resolve(data);
+      delete window[cb];
+      if(document.body.contains(script)) document.body.removeChild(script);
+    };
+    script.onerror = function(){
+      clearTimeout(timeout);
+      reject(new Error("erreur script"));
+      delete window[cb];
+      if(document.body.contains(script)) document.body.removeChild(script);
+    };
+    script.src = url + (url.indexOf("?")>-1?"&":"?") + "callback="+cb+"&t="+Date.now();
+    document.body.appendChild(script);
+  });
+}
+
 async function fetchGAS(url) {
-  const r = await fetch(url);
-  return r.json();
+  // Utiliser JSONP pour les GET (contourne CORS)
+  return fetchJsonp(url);
 }
 
 async function loadCours(){
@@ -467,7 +493,11 @@ function parseDate(str){
 }
 function dateStr(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), j=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+j; }
 function isPast(c){ const d=parseDate(c.date); d.setHours(c.heure,c.min||0,0,0); return d<new Date(); }
-function getInsForCours(c){ return allIns.filter(function(i){ return i.coursId===c.id; }); }
+function getInsForCours(c){ 
+  return allIns.filter(function(i){ 
+    return i.coursId===c.id || i.key===c.id; 
+  }); 
+}
 function estInscrit(c){ return getInsForCours(c).some(function(i){ return i.email===(me&&me.email)||i.email===(me&&me.email+"|chien2"); }); }
 
 function renderCal(){
@@ -547,7 +577,12 @@ function renderInscrits(){
   const mon=getMondayFromDate(new Date(),calOffset);
   const dim=new Date(mon); dim.setDate(mon.getDate()+6);
   const monStr=dateStr(mon), dimStr=dateStr(dim);
-  const coursWeek=cours.filter(function(c){ return c.date>=monStr&&c.date<=dimStr&&!c.annule; });
+  // Normaliser les dates pour comparaison
+  const coursWeek=cours.filter(function(c){
+    const cd=dateStr(parseDate(c.date));
+    return cd>=monStr&&cd<=dimStr&&!c.annule;
+  });
+  console.log("coursWeek pour inscrits:", coursWeek.length, "allIns:", allIns.length);
   const tous=[];
   coursWeek.forEach(function(c){
     getInsForCours(c).forEach(function(i){ tous.push(Object.assign({},i,{coursNom:c.nom,coursDate:c.date,coursHeure:c.heure,coursMin:c.min||0})); });
