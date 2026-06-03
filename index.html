@@ -70,7 +70,7 @@ header{background:var(--navy);padding:0.6rem 2rem;display:flex;align-items:cente
 .cours-item.inscrit{background:linear-gradient(90deg,var(--orange-light),#fff5f0);border-color:var(--orange-mid);}
 .cours-item.inscrit:hover{border-color:var(--orange);box-shadow:0 4px 12px rgba(232,97,26,0.2);}
 .cours-item.annule{background:#f9f9f9;border-color:#e0e0e0;cursor:not-allowed;opacity:0.6;}
-.cours-item.passe{background:#f5f5f5;border-color:#e8e8e8;cursor:not-allowed;opacity:0.55;}
+.cours-item.passe{background:#f5f5f5;border-color:#e8e8e8;cursor:not-allowed;opacity:0.55;}.cours-item.passe.admin-clickable{cursor:pointer;opacity:0.7;}.cours-item.passe.admin-clickable:hover{border-color:var(--navy);opacity:0.9;}
 .cours-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .dot-dispo{background:var(--navy);}
 .dot-inscrit{background:var(--orange);}
@@ -742,7 +742,7 @@ function renderCal(){
     byDate[dateKey].forEach(function(c){
       const past=isPast(c), annule=c.annule, inscrit=estInscrit(c);
       const item=document.createElement("div");
-      item.className="cours-item "+(annule?"annule":past?"passe":inscrit?"inscrit":"dispo");
+      item.className="cours-item "+(annule?"annule":past?"passe"+(isAdm?" admin-clickable":""):inscrit?"inscrit":"dispo");
       const dot=document.createElement("div");
       dot.className="cours-dot "+(annule?"dot-annule":past?"dot-passe":inscrit?"dot-inscrit":"dot-dispo");
       const info=document.createElement("div"); info.className="cours-info";
@@ -761,12 +761,17 @@ function renderCal(){
         right.innerHTML="<span class='cours-tag tag-annule'>Annule</span>";
       } else if(past){
         right.innerHTML="<span class='cours-tag tag-passe'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>"+compteur;
+        if(isAdm){ item.onclick=(function(cc){ return function(){ openAdminModal(cc); }; })(c); }
       } else if(inscrit){
         right.innerHTML="<span class='cours-tag tag-inscrit'>Inscrit(e)</span>"+compteur;
         item.onclick=(function(cc){ return function(){ openDes(cc); }; })(c);
       } else {
         right.innerHTML="<span class='cours-nb'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>"+compteur;
-        item.onclick=(function(cc){ return function(){ openIns(cc); }; })(c);
+        if(isAdm){
+          item.onclick=(function(cc){ return function(){ openAdminModal(cc); }; })(c);
+        } else {
+          item.onclick=(function(cc){ return function(){ openIns(cc); }; })(c);
+        }
       }
       item.appendChild(dot); item.appendChild(info); item.appendChild(right);
       list.appendChild(item);
