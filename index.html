@@ -689,9 +689,17 @@ function parseDate(str){
 function dateStr(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), j=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+j; }
 function isPast(c){ const d=parseDate(c.date); d.setHours(c.heure,c.min||0,0,0); return d<new Date(); }
 function getInsForCours(c){ 
-  return allIns.filter(function(i){ 
+  const ins = allIns.filter(function(i){ 
     return i.coursId===c.id || i.key===c.id; 
-  }); 
+  });
+  // Dédoublonner par email+chien
+  const seen = {};
+  return ins.filter(function(i){
+    const key = (i.email||"")+"_"+(i.chien||"");
+    if(seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
 }
 function estInscrit(c){ return getInsForCours(c).some(function(i){ return i.email===(me&&me.email)||i.email===(me&&me.email+"|chien2"); }); }
 
@@ -881,11 +889,15 @@ g("btnConfirm").onclick = async function(){
   const err=g("modalError"); err.style.display="none";
   const presence=g("rAbsent")&&g("rAbsent").checked?"absent":"present";
   var hok=(curC.heure<10?"0":"")+curC.heure+"h"+(curC.min&&curC.min>0?(curC.min<10?"0":"")+curC.min:"00");
-  // Vérifier si déjà inscrit ce jour-là (autre cours du même jour)
-  const memeJour = allIns.filter(function(i){
-    return i.email===me.email && i.coursDate===curC.date && i.coursId!==curC.id;
+  // Vérifier si déjà inscrit à CE cours
+  const dejaInscritCeCours = allIns.filter(function(i){
+    return (i.email===me.email || i.email===me.email+"|chien2" || i.email===me.email+"|chien3") && (i.coursId===curC.id || i.key===curC.id);
   });
-  // Chercher dans allIns les inscriptions du même jour
+  if(dejaInscritCeCours.length>0){
+    err.textContent="Tu es deja inscrit(e) a ce cours.";
+    err.style.display="block"; btn.disabled=false; btn.textContent="S inscrire"; return;
+  }
+  // Vérifier si déjà inscrit ce jour-là (autre cours du même jour)
   const dejaCeJour = allIns.filter(function(i){
     return (i.email===me.email || i.email===me.email+"|chien2" || i.email===me.email+"|chien3") && i.date===curC.date && i.coursId!==curC.id;
   });
