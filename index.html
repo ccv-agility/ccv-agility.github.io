@@ -875,12 +875,27 @@ function closeModal(){ g("modalOverlay").classList.remove("open"); renderCal(); 
 g("btnMC1").onclick=closeModal; g("btnMC2").onclick=closeModal; g("btnMC3").onclick=closeModal;
 
 g("btnConfirm").onclick = async function(){
+  const btn=g("btnConfirm");
+  if(btn.disabled) return; // Eviter double clic
+  btn.disabled=true; btn.textContent="Envoi...";
   const err=g("modalError"); err.style.display="none";
   const presence=g("rAbsent")&&g("rAbsent").checked?"absent":"present";
   var hok=(curC.heure<10?"0":"")+curC.heure+"h"+(curC.min&&curC.min>0?(curC.min<10?"0":"")+curC.min:"00");
+  // Vérifier si déjà inscrit ce jour-là (autre cours du même jour)
+  const memeJour = allIns.filter(function(i){
+    return i.email===me.email && i.coursDate===curC.date && i.coursId!==curC.id;
+  });
+  // Chercher dans allIns les inscriptions du même jour
+  const dejaCeJour = allIns.filter(function(i){
+    return (i.email===me.email || i.email===me.email+"|chien2" || i.email===me.email+"|chien3") && i.date===curC.date && i.coursId!==curC.id;
+  });
+  if(dejaCeJour.length>0){
+    err.textContent="Tu es deja inscrit(e) a un cours ce jour-la.";
+    err.style.display="block"; btn.disabled=false; btn.textContent="S inscrire"; return;
+  }
   // Lire les chiens cochés depuis le profil
   const cases=g("chiensCheckboxes")?g("chiensCheckboxes").querySelectorAll("input[type=checkbox]:checked"):[];
-  if(cases.length===0){ err.textContent="Coche au moins un chien ou configure ton profil."; err.style.display="block"; return; }
+  if(cases.length===0){ err.textContent="Coche au moins un chien ou configure ton profil."; err.style.display="block"; btn.disabled=false; btn.textContent="S inscrire"; return; }
   const chiensList=Array.from(cases).map(function(cb){ return cb.value; });
   const now=new Date().toLocaleString("fr-FR");
   const prenom=(me.displayName||me.email).split(" ")[0];
@@ -894,6 +909,7 @@ g("btnConfirm").onclick = async function(){
   g("okTitle").textContent="Inscription confirmee !";
   g("okDetails").textContent=prenom+" avec "+chiensList.join(" et ")+" - "+curC.nom+" le "+fmtDateCourt(parseDate(curC.date))+" a "+hok;
   g("modalForm").style.display="none"; g("modalOk").style.display="block";
+  btn.disabled=false; btn.textContent="S inscrire";
 };
 
 g("btnDesinscrire").onclick = async function(){
@@ -1082,7 +1098,7 @@ function loadMessage(){
 }
 async function saveMessage(){
   const msg=g("adminMsgInput").value.trim();
-  const date=msg?new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):"";
+  const date=msg?"Publié le "+new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):"";
   try{ localStorage.setItem("ccv_msg", msg); localStorage.setItem("ccv_msg_date", date); }catch(e){}
   try{ await postToSheet({action:"saveMessage", message:msg, date:date}); }catch(e){}
   // Afficher directement sans passer par localStorage
