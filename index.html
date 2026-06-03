@@ -1086,8 +1086,19 @@ function loadMessage(){
 async function saveMessage(){
   const msg=g("adminMsgInput").value.trim();
   const date=msg?new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):"";
-  try{ localStorage.setItem("ccv_msg", msg); localStorage.setItem("ccv_msg_date", date); await postToSheet({action:"saveMessage", message:msg, date:date}); }catch(e){}
-  loadMessage();
+  try{ localStorage.setItem("ccv_msg", msg); localStorage.setItem("ccv_msg_date", date); }catch(e){}
+  try{ await postToSheet({action:"saveMessage", message:msg, date:date}); }catch(e){}
+  // Afficher directement sans passer par localStorage
+  const banniere=g("banniere"), banMsg=g("banniereMsg"), banDate=g("banniereDate");
+  if(banniere && banMsg){
+    if(msg && msg.trim()!==""){
+      banMsg.textContent=msg;
+      if(banDate) banDate.textContent=date;
+      banniere.style.display="block";
+    } else {
+      banniere.style.display="none";
+    }
+  }
   alert(msg?"Message publie !":"Message supprime !");
 }
 async function loadMessageFromSheet(){
