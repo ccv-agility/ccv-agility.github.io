@@ -1098,7 +1098,7 @@ function loadMessage(){
 }
 async function saveMessage(){
   const msg=g("adminMsgInput").value.trim();
-  const date=msg?"Publié le "+new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):"";
+  const d=new Date(); const date=msg?"Publié le "+d.getDate()+" "+(["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"][d.getMonth()])+" "+d.getFullYear():"";
   try{ localStorage.setItem("ccv_msg", msg); localStorage.setItem("ccv_msg_date", date); }catch(e){}
   try{ await postToSheet({action:"saveMessage", message:msg, date:date}); }catch(e){}
   // Afficher directement sans passer par localStorage
