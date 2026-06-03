@@ -155,6 +155,10 @@ tr:hover td{background:var(--gray);}
 .chien-check-row:hover{border-color:var(--navy);}
 .chien-check-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
 .chien-check-row label{font-size:14px;font-weight:700;color:var(--navy);cursor:pointer;flex:1;}
+.modal-admin{background:white;border-radius:var(--radius);padding:1.8rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(13,27,75,0.25);max-height:80vh;overflow-y:auto;}
+.inscrit-admin-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:var(--radius-sm);background:var(--gray);margin-bottom:6px;font-size:13px;}
+.inscrit-admin-info{display:flex;align-items:center;gap:8px;flex:1;}
+.btn-del-sm{padding:4px 10px;border-radius:20px;border:1.5px solid #E53935;background:white;color:#E53935;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font);flex-shrink:0;}
 .admin-inscr-form{background:#E8EFFE;border-radius:var(--radius-sm);padding:1.2rem;margin-bottom:1.4rem;border:1px solid var(--navy-light);}
 .admin-inscr-form h4{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:1rem;}
 .banniere{display:none;margin-bottom:1.2rem;border-radius:var(--radius);padding:1rem 1.4rem;border-left:4px solid var(--orange);background:var(--orange-light);box-shadow:0 2px 8px rgba(232,97,26,0.1);}
@@ -324,7 +328,41 @@ tr:hover td{background:var(--gray);}
       <div id="adminEmpty" class="empty-msg" style="display:none;">Aucune inscription.</div>
     </div>
   </div>
-</div></div><!-- MODALE PROFIL -->
+</div></div><!-- MODALE ADMIN GESTION INSCRITS -->
+<div class="modal-overlay" id="modalAdminOverlay">
+  <div class="modal-admin">
+    <h3 id="modalAdminTitle"></h3>
+    <p class="modal-meta" id="modalAdminMeta"></p>
+    <div id="modalAdminForm">
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Inscrits</div>
+        <div id="adminInscrList"></div>
+        <div id="adminInscrEmpty" class="empty-msg" style="display:none;">Aucun inscrit pour ce cours.</div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem;">
+        <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Ajouter un inscrit</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" id="adminAddPrenom" placeholder="Prénom" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:var(--font);">
+          <input type="text" id="adminAddChien" placeholder="Chien" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:var(--font);">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;cursor:pointer;">
+            <input type="radio" name="adminPresence" value="present" checked style="accent-color:var(--navy);"> Présent
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;cursor:pointer;">
+            <input type="radio" name="adminPresence" value="absent" style="accent-color:var(--orange);"> Absent
+          </label>
+        </div>
+        <button class="btn-confirm" id="btnAdminAdd" style="width:100%;">+ Ajouter</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:1rem;">
+      <button class="btn-modal-cancel" id="btnAdminModalClose">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE PROFIL -->
 <div class="profil-overlay" id="profilOverlay">
   <div class="profil-card">
     <h3>Mon profil 🐕</h3>
@@ -952,6 +990,62 @@ async function loadInscriptions(){
   try{ const r=await fetch(SHEET, {redirect:"follow"}); const data=await r.json(); allIns=Array.isArray(data)?data:[]; }
   catch(e){ allIns=[]; }
 }
+
+// MODALE ADMIN GESTION INSCRITS
+let curAdminC = null;
+
+function openAdminModal(c){
+  curAdminC = c;
+  var hstr=(c.heure<10?"0":"")+c.heure+"h"+(c.min&&c.min>0?(c.min<10?"0":"")+c.min:"00");
+  g("modalAdminTitle").textContent=c.nom;
+  g("modalAdminMeta").textContent=fmtDate(parseDate(c.date))+" a "+hstr+(c.annule?" — ANNULE":"");
+  g("adminAddPrenom").value=""; g("adminAddChien").value="";
+  renderAdminInscrList(c);
+  g("modalAdminOverlay").classList.add("open");
+}
+
+function renderAdminInscrList(c){
+  const list=g("adminInscrList"), empty=g("adminInscrEmpty");
+  list.innerHTML="";
+  const ins=getInsForCours(c);
+  if(ins.length===0){ empty.style.display="block"; return; }
+  empty.style.display="none";
+  ins.forEach(function(i){
+    const row=document.createElement("div"); row.className="inscrit-admin-row";
+    const pv=(i.presence||"present").toLowerCase();
+    const pt=pv==="absent"
+      ? "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--orange-light);color:var(--orange);font-weight:700;'>Absent</span>"
+      : "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:#E8F5E9;color:#2E7D32;font-weight:700;'>Present</span>";
+    const info=document.createElement("div"); info.className="inscrit-admin-info";
+    info.innerHTML="<span style='font-weight:800;color:var(--navy);'>"+(i.nom?i.nom.split(" ")[0]:i.nom)+"</span><span style='color:var(--muted);'> - "+i.chien+"</span>"+pt;
+    const btn=document.createElement("button"); btn.className="btn-del-sm"; btn.textContent="Retirer";
+    btn.onclick=(function(email){ return async function(){
+      if(!confirm("Retirer cet inscrit ?")) return;
+      allIns=allIns.filter(function(x){ return !(x.coursId===curAdminC.id&&x.email===email); });
+      try{ await postToSheet({action:"desinscription",coursId:curAdminC.id,email:email}); }catch(e){}
+      renderAdminInscrList(curAdminC);
+      renderCal();
+    }; })(i.email);
+    row.appendChild(info); row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+if(g("btnAdminModalClose")) g("btnAdminModalClose").onclick=function(){ g("modalAdminOverlay").classList.remove("open"); };
+if(g("btnAdminAdd")) g("btnAdminAdd").onclick=async function(){
+  const prenom=g("adminAddPrenom").value.trim(), chien=g("adminAddChien").value.trim();
+  if(!prenom||!chien){ alert("Merci de remplir prénom et chien."); return; }
+  const presEl=document.querySelector('input[name="adminPresence"]:checked');
+  const presence=presEl?presEl.value:"present";
+  var hok=(curAdminC.heure<10?"0":"")+curAdminC.heure+"h"+(curAdminC.min&&curAdminC.min>0?(curAdminC.min<10?"0":"")+curAdminC.min:"00");
+  const ins={coursId:curAdminC.id,date:curAdminC.date,creneau:fmtDate(parseDate(curAdminC.date))+" "+hok,nom:prenom,chien:chien,email:"admin_"+prenom.toLowerCase().replace(/ /g,"_")+"_"+Date.now(),heure:new Date().toLocaleString("fr-FR"),action:"inscription",presence:presence};
+  try{ await postToSheet(ins); }catch(e){}
+  allIns.push(ins);
+  g("adminAddPrenom").value=""; g("adminAddChien").value="";
+  renderAdminInscrList(curAdminC);
+  renderCal();
+  alert(prenom+" inscrit(e) avec "+chien+" !");
+};
 
 function populateAdminInsCours(){
   const sel=g("adminInsCours"); if(!sel) return;
