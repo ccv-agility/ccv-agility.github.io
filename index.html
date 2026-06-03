@@ -875,27 +875,24 @@ function closeModal(){ g("modalOverlay").classList.remove("open"); renderCal(); 
 g("btnMC1").onclick=closeModal; g("btnMC2").onclick=closeModal; g("btnMC3").onclick=closeModal;
 
 g("btnConfirm").onclick = async function(){
-  const chien=g("fChien").value.trim(), err=g("modalError");
-  err.style.display="none";
-  if(!chien){ err.textContent="Merci d entrer le nom de ton chien."; err.style.display="block"; return; }
-  // Lire le statut presence par ID
-  const presence = g("rAbsent") && g("rAbsent").checked ? "absent" : "present";
-  console.log("Presence selectionnee:", presence);
+  const err=g("modalError"); err.style.display="none";
+  const presence=g("rAbsent")&&g("rAbsent").checked?"absent":"present";
   var hok=(curC.heure<10?"0":"")+curC.heure+"h"+(curC.min&&curC.min>0?(curC.min<10?"0":"")+curC.min:"00");
-  const chien2=g("fChien2").value.trim();
-  const ins={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+hok,nom:me.displayName||me.email,chien:chien,email:me.email,heure:new Date().toLocaleString("fr-FR"),action:"inscription",presence:presence};
-  try{ await postToSheet(ins); }catch(e){}
-  allIns.push(ins);
-  // Inscription 2e chien si renseigne
-  if(chien2){
-    const ins2={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+hok,nom:me.displayName||me.email,chien:chien2,email:me.email+"|chien2",heure:new Date().toLocaleString("fr-FR"),action:"inscription",presence:presence};
-    try{ await postToSheet(ins2); }catch(e){}
-    allIns.push(ins2);
+  // Lire les chiens cochés depuis le profil
+  const cases=g("chiensCheckboxes")?g("chiensCheckboxes").querySelectorAll("input[type=checkbox]:checked"):[];
+  if(cases.length===0){ err.textContent="Coche au moins un chien ou configure ton profil."; err.style.display="block"; return; }
+  const chiensList=Array.from(cases).map(function(cb){ return cb.value; });
+  const now=new Date().toLocaleString("fr-FR");
+  const prenom=(me.displayName||me.email).split(" ")[0];
+  for(var i=0;i<chiensList.length;i++){
+    const emailVal=i===0?me.email:me.email+"|chien"+(i+1);
+    const ins={coursId:curC.id,date:curC.date,creneau:fmtDate(parseDate(curC.date))+" "+hok,nom:me.displayName||me.email,chien:chiensList[i],email:emailVal,heure:now,action:"inscription",presence:presence};
+    try{ await postToSheet(ins); }catch(e){}
+    allIns.push(ins);
   }
   const ic=g("okIcon"); ic.className="ok-icon ok-green"; ic.textContent="OK";
   g("okTitle").textContent="Inscription confirmee !";
-  const chiensStr=chien2?chien+" et "+chien2:chien;
-  g("okDetails").textContent=(me.displayName||me.email)+" avec "+chiensStr+" - "+curC.nom+" le "+fmtDateCourt(parseDate(curC.date))+" a "+hok;
+  g("okDetails").textContent=prenom+" avec "+chiensList.join(" et ")+" - "+curC.nom+" le "+fmtDateCourt(parseDate(curC.date))+" a "+hok;
   g("modalForm").style.display="none"; g("modalOk").style.display="block";
 };
 
@@ -1074,7 +1071,7 @@ function loadMessage(){
     const msg=localStorage.getItem("ccv_msg");
     const date=localStorage.getItem("ccv_msg_date");
     if(msg && msg.trim()!==""){
-      g("banniereMsg").textContent=msg;
+      g("banniereMsg").style.whiteSpace="pre-wrap"; g("banniereMsg").textContent=msg;
       g("banniereDate").textContent=date||"";
       g("banniere").style.display="block";
       if(g("adminMsgInput")) g("adminMsgInput").value=msg;
