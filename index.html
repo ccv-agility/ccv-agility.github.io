@@ -832,9 +832,11 @@ function renderInscrits(){
 // MODALS
 function openIns(c){
   curC=c;
+  var hstr=(c.heure<10?"0":"")+c.heure+"h"+(c.min&&c.min>0?(c.min<10?"0":"")+c.min:"00");
   g("modalTitle").textContent="S inscrire";
-  g("modalMeta").textContent=c.nom+" - "+fmtDate(parseDate(c.date))+" a "+c.heure+"h00";
-  g("fChien").value=""; g("modalError").style.display="none";
+  g("modalMeta").textContent=c.nom+" - "+fmtDate(parseDate(c.date))+" a "+hstr;
+  g("modalError").style.display="none";
+  buildChiensCheckboxes();
   g("modalInsForm").style.display="block"; g("modalDesForm").style.display="none";
   g("modalForm").style.display="block"; g("modalOk").style.display="none";
   g("modalOverlay").classList.add("open");
@@ -986,9 +988,80 @@ function renderAdminCours(){
   populateSelectAnnuler();
 }
 
-async function loadInscriptions(){
-  try{ const r=await fetch(SHEET, {redirect:"follow"}); const data=await r.json(); allIns=Array.isArray(data)?data:[]; }
-  catch(e){ allIns=[]; }
+async function loadInscriptions(){ try{ const data=await fetchJsonp(SHEET+"?type=inscriptions"); allIns=Array.isArray(data)?data:[]; }catch(e){ allIns=[]; } }
+
+// PROFIL MEMBRE
+function loadProfil(){
+  try{ return JSON.parse(localStorage.getItem("ccv_profil_"+(window._me&&window._me.email||""))||"null"); }catch(e){ return null; }
+}
+function saveProfil(p){
+  try{ localStorage.setItem("ccv_profil_"+(window._me&&window._me.email||""), JSON.stringify(p)); }catch(e){}
+}
+function getChiens(){
+  const p=loadProfil();
+  if(!p) return [];
+  return [p.chien1, p.chien2, p.chien3].filter(function(c){ return c && c.trim()!==""; });
+}
+function openProfil(){
+  const p=loadProfil();
+  if(p){
+    if(g("profilPrenom")) g("profilPrenom").value=p.prenom||"";
+    if(g("profilChien1")) g("profilChien1").value=p.chien1||"";
+    if(g("profilChien2")) g("profilChien2").value=p.chien2||"";
+    if(g("profilChien3")) g("profilChien3").value=p.chien3||"";
+  }
+  g("profilOverlay").classList.add("open");
+}
+function buildChiensCheckboxes(){
+  const chiens=getChiens();
+  const container=g("chiensCheckboxes");
+  if(!container) return;
+  container.innerHTML="";
+  if(chiens.length===0){
+    container.innerHTML="<div style='font-size:13px;color:var(--orange);font-weight:600;'>Aucun chien — <a href='#' onclick=\'openProfil()\' style=\'color:var(--navy);\'>configure ton profil</a></div>";
+    return;
+  }
+  chiens.forEach(function(c,i){
+    const row=document.createElement("div"); row.className="chien-check-row";
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.id="cbIns"+i; cb.value=c; cb.checked=true;
+    const lbl=document.createElement("label"); lbl.htmlFor="cbIns"+i; lbl.textContent=c;
+    row.appendChild(cb); row.appendChild(lbl);
+    row.onclick=function(e){ if(e.target!==cb) cb.checked=!cb.checked; };
+    container.appendChild(row);
+  });
+}
+
+// MESSAGES
+function loadMessage(){
+  try{
+    const msg=localStorage.getItem("ccv_msg");
+    const date=localStorage.getItem("ccv_msg_date");
+    if(msg && msg.trim()!==""){
+      g("banniereMsg").textContent=msg;
+      g("banniereDate").textContent=date||"";
+      g("banniere").style.display="block";
+      if(g("adminMsgInput")) g("adminMsgInput").value=msg;
+    } else {
+      g("banniere").style.display="none";
+    }
+  }catch(e){}
+}
+async function saveMessage(){
+  const msg=g("adminMsgInput").value.trim();
+  const date=msg?new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):"";
+  try{ localStorage.setItem("ccv_msg", msg); localStorage.setItem("ccv_msg_date", date); await postToSheet({action:"saveMessage", message:msg, date:date}); }catch(e){}
+  loadMessage();
+  alert(msg?"Message publie !":"Message supprime !");
+}
+async function loadMessageFromSheet(){
+  try{
+    const data=await fetchJsonp(SHEET+"?type=message");
+    if(data && data.message && data.message.trim()!==""){
+      localStorage.setItem("ccv_msg", data.message);
+      localStorage.setItem("ccv_msg_date", data.date||"");
+    }
+  }catch(e){}
+  loadMessage();
 }
 
 // MODALE ADMIN GESTION INSCRITS
