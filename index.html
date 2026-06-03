@@ -688,6 +688,19 @@ function parseDate(str){
 }
 function dateStr(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), j=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+j; }
 function isPast(c){ const d=parseDate(c.date); d.setHours(c.heure,c.min||0,0,0); return d<new Date(); }
+// Utilitaire : désactiver un bouton pendant l'exécution
+function withLoading(btn, label, fn){
+  return async function(){
+    if(btn.disabled) return;
+    btn.disabled=true;
+    const orig=btn.textContent;
+    btn.textContent=label||"...";
+    try{ await fn(); }catch(e){}
+    btn.disabled=false;
+    btn.textContent=orig;
+  };
+}
+
 function getInsForCours(c){ 
   const ins = allIns.filter(function(i){ 
     return i.coursId===c.id || i.key===c.id; 
@@ -925,6 +938,8 @@ g("btnConfirm").onclick = async function(){
 };
 
 g("btnDesinscrire").onclick = async function(){
+  if(g("btnDesinscrire").disabled) return;
+  g("btnDesinscrire").disabled=true;
   const err=g("modalErrorDes");
   err.style.display="none";
   const cases=g("chiensDesListe").querySelectorAll("input[type=checkbox]");
@@ -945,7 +960,12 @@ g("btnDesinscrire").onclick = async function(){
 };
 
 // ADMIN
-g("btnSaveMsg").onclick = async function(){ await saveMessage(); };
+g("btnSaveMsg").onclick = async function(){
+  const btn=g("btnSaveMsg"); if(btn.disabled) return;
+  btn.disabled=true; btn.textContent="Publication...";
+  await saveMessage();
+  btn.disabled=false; btn.textContent="Publier le message";
+};
 
 // Profil
 if(g("btnProfil")) g("btnProfil").onclick = function(){ openProfil(); };
@@ -979,11 +999,13 @@ if(g("btnToggleAdmin")) g("btnToggleAdmin").onclick = function(){
   renderInscrits();
 };
 if(g("btnSaveProfil")) g("btnSaveProfil").onclick = function(){
+  const btn=g("btnSaveProfil"); if(btn.disabled) return; btn.disabled=true;
   const prenom=g("profilPrenom").value.trim();
   if(!prenom){ g("profilError").textContent="Merci d entrer ton prenom."; g("profilError").style.display="block"; return; }
   const p={prenom:prenom, chien1:g("profilChien1").value.trim(), chien2:g("profilChien2").value.trim(), chien3:g("profilChien3").value.trim()};
   saveProfil(p);
   g("profilOverlay").classList.remove("open");
+  btn.disabled=false;
   alert("Profil enregistre !");
 };
 
@@ -1179,6 +1201,8 @@ function renderAdminInscrList(c){
 
 if(g("btnAdminModalClose")) g("btnAdminModalClose").onclick=function(){ g("modalAdminOverlay").classList.remove("open"); };
 if(g("btnAdminAdd")) g("btnAdminAdd").onclick=async function(){
+  const btn=g("btnAdminAdd"); if(btn.disabled) return;
+  btn.disabled=true; btn.textContent="Envoi...";
   const prenom=g("adminAddPrenom").value.trim(), chien=g("adminAddChien").value.trim();
   if(!prenom||!chien){ alert("Merci de remplir prénom et chien."); return; }
   const presEl=document.querySelector('input[name="adminPresence"]:checked');
@@ -1190,6 +1214,7 @@ if(g("btnAdminAdd")) g("btnAdminAdd").onclick=async function(){
   g("adminAddPrenom").value=""; g("adminAddChien").value="";
   renderAdminInscrList(curAdminC);
   renderCal();
+  btn.disabled=false; btn.textContent="+ Ajouter";
   alert(prenom+" inscrit(e) avec "+chien+" !");
 };
 
