@@ -144,6 +144,11 @@ tr:hover td{background:var(--gray);}
 .chien-check:hover{border-color:var(--orange);}
 .chien-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;}
 .chien-check label{font-size:14px;font-weight:700;color:var(--navy);cursor:pointer;}
+.btn-toggle-admin{font-size:12px;padding:7px 16px;border-radius:20px;font-family:var(--font);font-weight:700;cursor:pointer;transition:all 0.2s;}
+.btn-toggle-admin.mode-membre{border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:rgba(255,255,255,0.8);}
+.btn-toggle-admin.mode-membre:hover{background:rgba(255,255,255,0.12);}
+.btn-toggle-admin.mode-admin{border:none;background:var(--orange);color:white;}
+.btn-toggle-admin.mode-admin:hover{background:#c9521a;}
 .profil-overlay{display:none;position:fixed;inset:0;background:rgba(13,27,75,0.6);z-index:300;align-items:center;justify-content:center;padding:1rem;}
 .profil-overlay.open{display:flex;}
 .profil-card{background:white;border-radius:var(--radius);padding:2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(13,27,75,0.25);}
@@ -225,6 +230,7 @@ tr:hover td{background:var(--gray);}
 <div class="header-right">
   <span id="userEmail"></span>
   <span id="adminBadge" class="badge-admin" style="display:none;">Admin</span>
+  <button class="btn-toggle-admin mode-membre" id="btnToggleAdmin" style="display:none;">Vue membre</button>
   <button class="btn-sm" id="btnProfil" style="font-size:12px;padding:6px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;cursor:pointer;color:rgba(255,255,255,0.8);font-family:var(--font);font-weight:700;">Mon profil</button>
   <button class="btn-logout" id="btnLogout">Deconnexion</button>
 </div></header>
@@ -630,6 +636,11 @@ onAuthStateChanged(auth, async function(user){
     }, 1000);
     g("adminBadge").style.display=isAdm?"inline-block":"none";
     g("adminSection").classList.toggle("visible",isAdm);
+    if(isAdm && g("btnToggleAdmin")){
+      g("btnToggleAdmin").style.display="inline-block";
+      adminModeActive=true;
+      updateToggleBtn();
+    }
     // Charger les cours depuis Sheets
     g("calContainer").innerHTML = "<div style='text-align:center;padding:2rem;color:var(--muted);font-size:14px;font-weight:600;'>Chargement...</div>";
     cours = await loadCours();
@@ -749,13 +760,17 @@ function renderCal(){
         right.innerHTML="<span class='cours-tag tag-annule'>Annule</span>";
       } else if(past){
         right.innerHTML="<span class='cours-tag tag-passe'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>"+compteur;
-        if(isAdm){ item.onclick=(function(cc){ return function(){ openAdminModal(cc); }; })(c); }
+        if(isAdm && adminModeActive){ item.onclick=(function(cc){ return function(){ openAdminModal(cc); }; })(c); }
       } else if(inscrit){
         right.innerHTML="<span class='cours-tag tag-inscrit'>Inscrit(e)</span>"+compteur;
-        item.onclick=(function(cc){ return function(){ openDes(cc); }; })(c);
+        if(isAdm && adminModeActive){
+          item.onclick=(function(cc){ return function(){ openAdminModal(cc); }; })(c);
+        } else {
+          item.onclick=(function(cc){ return function(){ openDes(cc); }; })(c);
+        }
       } else {
         right.innerHTML="<span class='cours-nb'>"+ins.length+" inscrit"+(ins.length>1?"s":"")+"</span>"+compteur;
-        if(isAdm){
+        if(isAdm && adminModeActive){
           item.onclick=(function(cc){ return function(){ openAdminModal(cc); }; })(c);
         } else {
           item.onclick=(function(cc){ return function(){ openIns(cc); }; })(c);
@@ -909,6 +924,35 @@ g("btnSaveMsg").onclick = async function(){ await saveMessage(); };
 
 // Profil
 if(g("btnProfil")) g("btnProfil").onclick = function(){ openProfil(); };
+
+// Toggle admin/membre
+let adminModeActive = true; // par défaut admin voit la vue admin
+
+function updateToggleBtn(){
+  const btn = g("btnToggleAdmin");
+  if(!btn) return;
+  if(adminModeActive){
+    btn.textContent = "Vue membre";
+    btn.className = "btn-toggle-admin mode-membre";
+    btn.title = "Basculer en vue membre";
+  } else {
+    btn.textContent = "Mode admin";
+    btn.className = "btn-toggle-admin mode-admin";
+    btn.title = "Revenir en mode admin";
+  }
+  // Afficher/cacher le panneau admin
+  const adminSection = g("adminSection");
+  if(adminSection){
+    adminSection.classList.toggle("visible", adminModeActive && isAdm);
+  }
+}
+
+if(g("btnToggleAdmin")) g("btnToggleAdmin").onclick = function(){
+  adminModeActive = !adminModeActive;
+  updateToggleBtn();
+  renderCal();
+  renderInscrits();
+};
 if(g("btnSaveProfil")) g("btnSaveProfil").onclick = function(){
   const prenom=g("profilPrenom").value.trim();
   if(!prenom){ g("profilError").textContent="Merci d entrer ton prenom."; g("profilError").style.display="block"; return; }
