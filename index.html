@@ -144,6 +144,19 @@ tr:hover td{background:var(--gray);}
 .chien-check:hover{border-color:var(--orange);}
 .chien-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;}
 .chien-check label{font-size:14px;font-weight:700;color:var(--navy);cursor:pointer;}
+.profil-overlay{display:none;position:fixed;inset:0;background:rgba(13,27,75,0.6);z-index:300;align-items:center;justify-content:center;padding:1rem;}
+.profil-overlay.open{display:flex;}
+.profil-card{background:white;border-radius:var(--radius);padding:2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(13,27,75,0.25);}
+.profil-card h3{font-size:18px;font-weight:900;color:var(--navy);margin-bottom:6px;}
+.profil-card p{font-size:13px;color:var(--muted);margin-bottom:1.4rem;font-weight:600;}
+.chien-input-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.chien-input-row label{font-size:12px;font-weight:800;color:var(--muted);width:60px;flex-shrink:0;}
+.chien-check-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-sm);background:var(--gray);margin-bottom:8px;cursor:pointer;border:1.5px solid transparent;transition:border 0.15s;}
+.chien-check-row:hover{border-color:var(--navy);}
+.chien-check-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
+.chien-check-row label{font-size:14px;font-weight:700;color:var(--navy);cursor:pointer;flex:1;}
+.admin-inscr-form{background:#E8EFFE;border-radius:var(--radius-sm);padding:1.2rem;margin-bottom:1.4rem;border:1px solid var(--navy-light);}
+.admin-inscr-form h4{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:1rem;}
 .banniere{display:none;margin-bottom:1.2rem;border-radius:var(--radius);padding:1rem 1.4rem;border-left:4px solid var(--orange);background:var(--orange-light);box-shadow:0 2px 8px rgba(232,97,26,0.1);}
 .banniere-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
 .banniere-titre{font-size:13px;font-weight:900;color:var(--orange);text-transform:uppercase;letter-spacing:0.04em;}
@@ -208,6 +221,7 @@ tr:hover td{background:var(--gray);}
 <div class="header-right">
   <span id="userEmail"></span>
   <span id="adminBadge" class="badge-admin" style="display:none;">Admin</span>
+  <button class="btn-sm" id="btnProfil" style="font-size:12px;padding:6px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;cursor:pointer;color:rgba(255,255,255,0.8);font-family:var(--font);font-weight:700;">Mon profil</button>
   <button class="btn-logout" id="btnLogout">Deconnexion</button>
 </div></header>
 <div class="main-inner">
@@ -282,6 +296,22 @@ tr:hover td{background:var(--gray);}
       </div>
     </div>
 
+    <div class="admin-inscr-form">
+      <h4>Inscrire / Désinscrire un membre</h4>
+      <div class="fg" style="margin-bottom:10px;"><label>Cours</label>
+        <select id="adminInsCours" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:var(--font);"></select>
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
+        <div class="fg" style="margin-bottom:0;"><label>Prénom</label><input type="text" id="adminInsPrenom" placeholder="Marie"></div>
+        <div class="fg" style="margin-bottom:0;"><label>Chien</label><input type="text" id="adminInsChien" placeholder="Luna"></div>
+        <button class="btn-add" id="btnAdminInscrire">Inscrire</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+        <input type="text" id="adminDesEmail" placeholder="Email à désinscrire" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:var(--font);">
+        <button class="btn-del" id="btnAdminDesinscrire" style="padding:9px 16px;white-space:nowrap;">Désinscrire</button>
+      </div>
+    </div>
+
     <div class="admin-subtitle">Cours a venir</div>
     <div id="adminCoursList"></div>
 
@@ -294,16 +324,35 @@ tr:hover td{background:var(--gray);}
       <div id="adminEmpty" class="empty-msg" style="display:none;">Aucune inscription.</div>
     </div>
   </div>
-</div></div><div class="modal-overlay" id="modalOverlay">
+</div></div><!-- MODALE PROFIL -->
+<div class="profil-overlay" id="profilOverlay">
+  <div class="profil-card">
+    <h3>Mon profil 🐕</h3>
+    <p>Configure ton profil pour t'inscrire plus facilement aux cours.</p>
+    <div class="fg"><label>Ton prénom</label><input type="text" id="profilPrenom" placeholder="Marie"></div>
+    <div style="margin-bottom:13px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;">Tes chiens</div>
+      <div class="chien-input-row"><label>Chien 1</label><input type="text" id="profilChien1" placeholder="Luna" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:var(--font);"></div>
+      <div class="chien-input-row"><label>Chien 2</label><input type="text" id="profilChien2" placeholder="Rex (optionnel)" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:var(--font);"></div>
+      <div class="chien-input-row"><label>Chien 3</label><input type="text" id="profilChien3" placeholder="(optionnel)" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:var(--font);"></div>
+    </div>
+    <div class="alert-err" id="profilError"></div>
+    <div class="modal-actions">
+      <button class="btn-confirm" id="btnSaveProfil" style="margin-top:0;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
 <div class="modal">
   <div id="modalForm">
     <h3 id="modalTitle"></h3>
     <p class="modal-meta" id="modalMeta"></p>
     <div id="modalInsForm">
-      <div class="fg"><label>Nom du 1er chien</label><input type="text" id="fChien" placeholder="Ex : Luna"></div>
       <div class="fg">
-        <label>Nom du 2e chien <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(optionnel)</span></label>
-        <input type="text" id="fChien2" placeholder="Ex : Rex (laisser vide si un seul chien)">
+        <label>Tes chiens</label>
+        <div id="chiensCheckboxes"></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;">Coche le ou les chiens que tu amènes</div>
       </div>
       <div class="fg">
         <label>Presence</label>
@@ -543,11 +592,16 @@ g("btnLogout").onclick = function(){ signOut(auth); };
 
 onAuthStateChanged(auth, async function(user){
   if(user){
-    me=user; isAdm=ADMINS.includes(user.email);
+    me=user; window._me=user; isAdm=ADMINS.includes(user.email);
     g("authPage").style.display="none"; g("authPage").classList.remove("active");
     g("mainPage").style.display="block"; g("mainPage").classList.add("active");
     window.scrollTo(0,0);
     g("userEmail").textContent=user.displayName||user.email;
+    // Proposer le profil si pas encore configuré
+    setTimeout(function(){
+      const p=loadProfil();
+      if(!p||!p.chien1){ openProfil(); }
+    }, 1000);
     g("adminBadge").style.display=isAdm?"inline-block":"none";
     g("adminSection").classList.toggle("visible",isAdm);
     // Charger les cours depuis Sheets
@@ -820,6 +874,17 @@ g("btnDesinscrire").onclick = async function(){
 // ADMIN
 g("btnSaveMsg").onclick = async function(){ await saveMessage(); };
 
+// Profil
+if(g("btnProfil")) g("btnProfil").onclick = function(){ openProfil(); };
+if(g("btnSaveProfil")) g("btnSaveProfil").onclick = function(){
+  const prenom=g("profilPrenom").value.trim();
+  if(!prenom){ g("profilError").textContent="Merci d entrer ton prenom."; g("profilError").style.display="block"; return; }
+  const p={prenom:prenom, chien1:g("profilChien1").value.trim(), chien2:g("profilChien2").value.trim(), chien3:g("profilChien3").value.trim()};
+  saveProfil(p);
+  g("profilOverlay").classList.remove("open");
+  alert("Profil enregistre !");
+};
+
 g("btnAddCours").onclick = async function(){
   const date=g("newDate").value, heureVal=g("newHeure").value, nom=g("newNom").value.trim()||"Cours agility";
   const [hStr,mStr]=heureVal.split(":");
@@ -887,6 +952,46 @@ async function loadInscriptions(){
   try{ const r=await fetch(SHEET, {redirect:"follow"}); const data=await r.json(); allIns=Array.isArray(data)?data:[]; }
   catch(e){ allIns=[]; }
 }
+
+function populateAdminInsCours(){
+  const sel=g("adminInsCours"); if(!sel) return;
+  sel.innerHTML="<option value=''>-- Choisir un cours --</option>";
+  const sorted=[...cours].sort(function(a,b){ return parseDate(b.date)-parseDate(a.date)||b.heure-a.heure; });
+  sorted.forEach(function(c){
+    var hstr=(c.heure<10?"0":"")+c.heure+"h"+(c.min&&c.min>0?(c.min<10?"0":"")+c.min:"00");
+    const opt=document.createElement("option"); opt.value=c.id;
+    opt.textContent=(c.annule?"[ANNULE] ":"")+fmtDateCourt(parseDate(c.date))+" "+hstr+" - "+c.nom;
+    sel.appendChild(opt);
+  });
+}
+
+if(g("btnAdminInscrire")) g("btnAdminInscrire").onclick = async function(){
+  const coursId=g("adminInsCours").value;
+  const prenom=g("adminInsPrenom").value.trim();
+  const chien=g("adminInsChien").value.trim();
+  if(!coursId||!prenom||!chien){ alert("Merci de remplir tous les champs."); return; }
+  const c=cours.find(function(x){ return x.id===coursId; });
+  if(!c) return;
+  var hok=(c.heure<10?"0":"")+c.heure+"h"+(c.min&&c.min>0?(c.min<10?"0":"")+c.min:"00");
+  const ins={coursId:c.id,date:c.date,creneau:fmtDate(parseDate(c.date))+" "+hok,nom:prenom,chien:chien,email:"admin_"+prenom.toLowerCase()+"_"+Date.now(),heure:new Date().toLocaleString("fr-FR"),action:"inscription",presence:"present"};
+  try{ await postToSheet(ins); }catch(e){}
+  allIns.push(ins);
+  g("adminInsPrenom").value=""; g("adminInsChien").value="";
+  renderCal(); renderAdminTable();
+  alert(prenom+" inscrit(e) avec "+chien+" !");
+};
+
+if(g("btnAdminDesinscrire")) g("btnAdminDesinscrire").onclick = async function(){
+  const coursId=g("adminInsCours").value;
+  const email=g("adminDesEmail").value.trim();
+  if(!coursId||!email){ alert("Merci de choisir un cours et entrer un email."); return; }
+  allIns=allIns.filter(function(i){ return !(i.coursId===coursId&&i.email.startsWith(email)); });
+  try{ await postToSheet({action:"desinscription",coursId:coursId,email:email}); }catch(e){}
+  try{ await postToSheet({action:"desinscription",coursId:coursId,email:email+"|chien2"}); }catch(e){}
+  g("adminDesEmail").value="";
+  renderCal(); renderAdminTable();
+  alert("Membre desinscrit !");
+};
 
 function renderAdminTable(){
   const tbody=g("adminTable"), empty=g("adminEmpty");
