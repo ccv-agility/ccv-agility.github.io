@@ -1072,7 +1072,18 @@ function renderAdminCours(){
   populateSelectAnnuler();
 }
 
-async function loadInscriptions(){ try{ const data=await fetchJsonp(SHEET+"?type=inscriptions"); allIns=Array.isArray(data)?data:[]; }catch(e){ allIns=[]; } }
+async function loadInscriptions(){ 
+  try{ 
+    const data=await fetchJsonp(SHEET+"?type=inscriptions"); 
+    allIns=Array.isArray(data)?data:[]; 
+    // Normaliser le champ presence
+    allIns=allIns.map(function(i){
+      if(!i.presence || i.presence==="undefined" || i.presence.trim()==="") i.presence="present";
+      return i;
+    });
+    console.log("Inscriptions chargees:", allIns.length, "dont absents:", allIns.filter(function(i){ return i.presence==="absent"; }).length);
+  }catch(e){ allIns=[]; } 
+}
 
 // PROFIL MEMBRE
 function loadProfil(){
