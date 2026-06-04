@@ -844,16 +844,16 @@ function renderInscrits(){
     out+="<span style='font-size:11px;background:#E8F5E9;color:#2E7D32;padding:2px 10px;border-radius:20px;font-weight:700;'>"+nbPres+" present"+(nbPres>1?"s":"")+"</span>";
     if(nbAbs>0) out+="<span style='font-size:11px;background:var(--orange-light);color:var(--orange);padding:2px 10px;border-radius:20px;font-weight:700;'>"+nbAbs+" absent"+(nbAbs>1?"s":"")+"</span>";
     out+="</span></div>";
-    grp.items.forEach(function(i){
-      var pv=(i.presence||"present").toLowerCase().trim();
-      var pt=pv==="absent"
-        ? "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:var(--orange-light);color:var(--orange);font-weight:700;margin-left:auto;'>Absent</span>"
-        : "<span style='font-size:11px;padding:2px 8px;border-radius:20px;background:#E8F5E9;color:#2E7D32;font-weight:700;margin-left:auto;'>Present</span>";
-      out+="<div class='inscrit-row'>"+
-        "<span class='inscrit-nom'>"+(i.nom?i.nom.split(" ")[0]:i.nom)+"</span>"+
-        "<span class='inscrit-chien'> - "+i.chien+"</span>"+pt+
+    var presentsOnly=grp.items.filter(function(i){ return (i.presence||"present").toLowerCase().trim()!=="absent"; });
+    presentsOnly.forEach(function(i){
+      out+="<div class=\'inscrit-row\'>"+
+        "<span class=\'inscrit-nom\'>"+(i.nom?i.nom.split(" ")[0]:i.nom)+"</span>"+
+        "<span class=\'inscrit-chien\'> - "+i.chien+"</span>"+
         "</div>";
     });
+    if(presentsOnly.length===0 && grp.items.length>0){
+      out+="<div style=\'padding:8px 12px;font-size:13px;color:var(--muted);\'>Aucun present.</div>";
+    }
   });
   list.innerHTML=out;
 }
@@ -1164,6 +1164,7 @@ let curAdminC = null;
 
 function openAdminModal(c){
   curAdminC = c;
+  showAbsents = false; // Réinitialiser à chaque ouverture
   var hstr=(c.heure<10?"0":"")+c.heure+"h"+(c.min&&c.min>0?(c.min<10?"0":"")+c.min:"00");
   g("modalAdminTitle").textContent=c.nom;
   g("modalAdminMeta").textContent=fmtDate(parseDate(c.date))+" a "+hstr+(c.annule?" — ANNULE":"");
@@ -1172,13 +1173,35 @@ function openAdminModal(c){
   g("modalAdminOverlay").classList.add("open");
 }
 
+let showAbsents = false;
+
 function renderAdminInscrList(c){
   const list=g("adminInscrList"), empty=g("adminInscrEmpty");
   list.innerHTML="";
   const ins=getInsForCours(c);
   if(ins.length===0){ empty.style.display="block"; return; }
   empty.style.display="none";
-  ins.forEach(function(i){
+
+  const presents=ins.filter(function(i){ return (i.presence||"present").toLowerCase()!=="absent"; });
+  const absents=ins.filter(function(i){ return (i.presence||"present").toLowerCase()==="absent"; });
+
+  // Bouton toggle absents
+  if(absents.length>0){
+    const toggleBtn=document.createElement("button");
+    toggleBtn.style.cssText="font-size:12px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--orange);background:"+(showAbsents?"var(--orange)":"white")+";color:"+(showAbsents?"white":"var(--orange)")+";font-weight:700;cursor:pointer;margin-bottom:10px;font-family:var(--font);";
+    toggleBtn.textContent=(showAbsents?"Masquer":"Voir")+" les absents ("+absents.length+")";
+    toggleBtn.onclick=function(){ showAbsents=!showAbsents; renderAdminInscrList(c); };
+    list.appendChild(toggleBtn);
+  }
+
+  // Afficher presents
+  const toShow = showAbsents ? ins : presents;
+  if(toShow.length===0){
+    const empty2=document.createElement("div"); empty2.className="empty-msg"; empty2.style.padding="0.8rem"; empty2.textContent="Aucun present pour ce cours.";
+    list.appendChild(empty2); return;
+  }
+
+  toShow.forEach(function(i){
     const row=document.createElement("div"); row.className="inscrit-admin-row";
     const pv=(i.presence||"present").toLowerCase();
     const pt=pv==="absent"
