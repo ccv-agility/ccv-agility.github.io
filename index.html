@@ -433,7 +433,7 @@ const FBCFG = {
   messagingSenderId: "338841120942",
   appId: "1:338841120942:web:bf91c5aaa302bd3f0cfd3f"
 };
-const SHEET = "https://script.google.com/macros/s/AKfycbx97dg_ZMj_k1B8pF5AsfZgX1hn22uEFBQKNj5_U0sQIPfvc0zbT91PR-wM26d5W2eH9A/exec";
+const SHEET = "https://script.google.com/macros/s/AKfycbxzHCyPkcFqbVkX-NoAoiVOnvECerYHp-YIPeFPOxhEvcwuQ-GWSTLxVhb6I4FlJeusIA/exec";
 const ADMINS = ["martinezlaetitia7@gmail.com","agility.ccv@gmail.com","blemartelot@yahoo.fr"];
 
 const fbapp = initializeApp(FBCFG);
@@ -470,40 +470,17 @@ async function fetchGAS(url) {
   return fetchJsonp(url);
 }
 
-function postToSheet(data) {
-  return new Promise(function(resolve) {
-    // Creer un iframe cache pour recevoir la reponse
-    const iframeId = "post_iframe_"+Date.now();
-    const iframe = document.createElement("iframe");
-    iframe.name = iframeId;
-    iframe.style.display = "none";
-    document.body.appendChild(iframe);
-
-    // Creer un formulaire cache
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = SHEET;
-    form.target = iframeId;
-    form.style.display = "none";
-
-    // Ajouter les donnees comme champ cache
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = "payload";
-    input.value = JSON.stringify(data);
-    form.appendChild(input);
-
-    document.body.appendChild(form);
-
-    // Nettoyer apres envoi
-    setTimeout(function() {
-      try { document.body.removeChild(form); } catch(e) {}
-      try { document.body.removeChild(iframe); } catch(e) {}
-      resolve({status:"ok"});
-    }, 2000);
-
-    form.submit();
-  });
+async function postToSheet(data) {
+  try {
+    await fetch(SHEET, {
+      method: "POST",
+      mode: "no-cors",
+      body: JSON.stringify(data),
+      headers: {"Content-Type": "text/plain"}
+    });
+  } catch(e) {
+    console.log("postToSheet erreur:", e);
+  }
 }
 
 async function loadCours(){
@@ -1243,7 +1220,10 @@ if(g("btnAdminAdd")) g("btnAdminAdd").onclick=async function(){
   const presence=presEl?presEl.value:"present";
   var hok=(curAdminC.heure<10?"0":"")+curAdminC.heure+"h"+(curAdminC.min&&curAdminC.min>0?(curAdminC.min<10?"0":"")+curAdminC.min:"00");
   const ins={coursId:curAdminC.id,date:curAdminC.date,creneau:fmtDate(parseDate(curAdminC.date))+" "+hok,nom:prenom,chien:chien,email:"admin_"+prenom.toLowerCase().replace(/ /g,"_")+"_"+Date.now(),heure:new Date().toLocaleString("fr-FR"),action:"inscription",presence:presence};
-  try{ await postToSheet(ins); }catch(e){}
+  try{ 
+    await postToSheet(ins); 
+    console.log("Admin inscription envoyee:", ins.nom, ins.chien);
+  }catch(e){ console.log("Erreur postToSheet:", e); }
   allIns.push(ins);
   g("adminAddPrenom").value=""; g("adminAddChien").value="";
   renderAdminInscrList(curAdminC);
