@@ -153,6 +153,22 @@ tr:hover td{background:var(--gray);}
 .banniere-date{font-size:11px;color:var(--muted);font-weight:600;}
 .admin-msg-form{background:var(--orange-light);border-radius:var(--radius-sm);padding:1.2rem;margin-bottom:1.4rem;border:1px solid var(--orange-mid);}
 .admin-msg-form h4{font-size:13px;font-weight:800;color:var(--orange);margin-bottom:1rem;}
+.onglets{display:flex;gap:6px;background:white;border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:1.2rem;}
+.onglet{flex:1;padding:10px;border:none;border-radius:var(--radius-sm);background:transparent;color:var(--muted);font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer;}
+.onglet.active{background:var(--navy);color:white;}
+.concours-card{background:white;border-radius:var(--radius);border:1px solid var(--border);padding:1.1rem 1.2rem;margin-bottom:0.8rem;box-shadow:0 2px 8px rgba(13,27,75,0.05);}
+.concours-card.prochain{border:2px solid var(--orange);}
+.concours-tag{display:inline-block;font-size:11px;font-weight:900;color:white;background:var(--orange);padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;}
+.concours-date{font-size:16px;font-weight:900;color:var(--navy);text-transform:capitalize;}
+.concours-lieu{font-size:14px;font-weight:800;color:var(--navy);margin-top:2px;}
+.concours-type{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;}
+.concours-grille{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:10px;font-size:13px;}
+.concours-grille .lbl{color:var(--muted);font-weight:700;}
+.concours-grille .val{color:var(--navy);font-weight:700;}
+.concours-infos{margin-top:10px;font-size:13px;color:var(--text);white-space:pre-wrap;background:var(--gray);border-radius:var(--radius-sm);padding:10px 12px;}
+.concours-liens{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.btn-lien-concours{display:inline-block;font-size:12px;font-weight:800;padding:7px 14px;border-radius:20px;text-decoration:none;background:var(--navy-light);color:var(--navy);border:none;cursor:pointer;font-family:var(--font);}
+.btn-lien-concours.orange{background:var(--orange);color:white;}
 .page{display:none;}
 .page.active{display:block;}
 #authPage.active{display:flex;}
@@ -216,6 +232,15 @@ tr:hover td{background:var(--gray);}
 </div></header>
 <div class="main-inner">
 
+  <!-- BARRE D'ONGLETS -->
+  <div class="onglets">
+    <button class="onglet active" id="btnOngletCours">&#128197; Cours</button>
+    <button class="onglet" id="btnOngletConcours">&#127942; Concours</button>
+  </div>
+
+  <!-- ===== ONGLET COURS ===== -->
+  <div id="ongletCours">
+
   <div class="cal-nav">
     <h2 id="calTitle"></h2>
     <div class="cal-nav-btns">
@@ -239,6 +264,7 @@ tr:hover td{background:var(--gray);}
     <div class="section-title"><div class="stitle-icon">&#128203;</div>Inscrits de la semaine</div>
     <div id="inscritsList"></div>
   </div>
+
 
   <div class="admin-card" id="adminSection">
     <div class="admin-title">Admin - Gestion des cours</div>
@@ -302,6 +328,22 @@ tr:hover td{background:var(--gray);}
       <div id="adminEmpty" class="empty-msg" style="display:none;">Aucune inscription.</div>
     </div>
   </div>
+  </div><!-- fin onglet Cours -->
+
+  <!-- ===== ONGLET CONCOURS ===== -->
+  <div id="ongletConcours" style="display:none;">
+    <div class="cal-nav">
+      <h2>Concours d'agility à 150 km de Vannes</h2>
+    </div>
+    <p style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:1rem;">
+      Source : calendrier officiel CNEAC (sportscanins.fr). Mis à jour automatiquement.
+    </p>
+    <div id="concoursListe"><div class="empty-msg">Chargement des concours...</div></div>
+    <a id="lienTousConcours" target="_blank" rel="noopener" class="btn-lien-concours">
+      Voir le calendrier complet sur sportscanins.fr &#8599;
+    </a>
+  </div><!-- fin onglet Concours -->
+
 </div></div><!-- MODALE ADMIN GESTION INSCRITS -->
 <div class="modal-overlay" id="modalAdminOverlay">
   <div class="modal-admin">
@@ -1261,6 +1303,109 @@ if(g("btnAdminDesinscrire")) g("btnAdminDesinscrire").onclick = async function()
   renderCal(); renderAdminTable();
   alert("Membre desinscrit !");
 };
+
+// ===== ONGLET CONCOURS : concours d'agility a 150 km de Vannes =====
+// Colle ici l'adresse (URL /exec) du petit script "concours" une fois deploye.
+const CONCOURS_URL = "https://script.google.com/macros/s/AKfycbwUUE664QcE-ix-BdxLavKpZV0-Qi3WNrHt7S5hbUdo0WhdHh3lRUWdQiWd4wnh7Gzt/exec";
+const LIEN_CONCOURS_150KM = "https://sportscanins.fr/calendrier/calendrier.php?proche&latitude=47.658236&longitude=-2.760847&km=150&Activite=Agility";
+
+function echapper(s){
+  return String(s||"").replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
+// --- Onglets Cours / Concours ---
+function afficherOnglet(nom){
+  g("ongletCours").style.display    = nom==="cours"    ? "block" : "none";
+  g("ongletConcours").style.display = nom==="concours" ? "block" : "none";
+  g("btnOngletCours").classList.toggle("active",    nom==="cours");
+  g("btnOngletConcours").classList.toggle("active", nom==="concours");
+  window.scrollTo(0,0);
+  if(nom==="concours" && !concoursCharges) loadConcours();   // on charge au premier clic
+}
+g("btnOngletCours").onclick    = function(){ afficherOnglet("cours"); };
+g("btnOngletConcours").onclick = function(){ afficherOnglet("concours"); };
+
+let concoursCharges = false;
+
+// "05-12-2026" -> "5 décembre 2026"
+function fmtDateFr(jjmmaaaa){
+  if(!jjmmaaaa) return "";
+  const p = jjmmaaaa.split("-");
+  const d = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  return d.toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+}
+
+function ligneInfo(label, valeur){
+  if(!valeur) return "";
+  return "<div class='lbl'>"+label+"</div><div class='val'>"+valeur+"</div>";
+}
+
+function carteConcours(c, estProchain){
+  const dateTxt = parseDate(c.date).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  let html = "<div class='concours-card"+(estProchain?" prochain":"")+"'>";
+  if(estProchain) html += "<div class='concours-tag'>Prochain concours</div>";
+  html += "<div class='concours-date'>"+echapper(dateTxt)+"</div>"
+        + "<div class='concours-lieu'>"+echapper(c.lieu)+"</div>"
+        + "<div class='concours-type'>"+echapper(c.type)+"</div>";
+
+  // Tableau d'infos (une ligne n'apparait que si l'info existe)
+  let grille = "";
+  if(c.juges && c.juges.length>0){
+    grille += ligneInfo(c.juges.length>1 ? "Juges" : "Juge", c.juges.map(echapper).join("<br>"));
+  }
+  grille += ligneInfo("Terrains", echapper(c.terrains));
+  grille += ligneInfo("Engagement", echapper(c.prix));
+  if(c.inscriptionsDu && c.inscriptionsAu){
+    grille += ligneInfo("Inscriptions", "du "+fmtDateFr(c.inscriptionsDu)+" au "+fmtDateFr(c.inscriptionsAu));
+  }
+  if(c.nbEngages!==null && c.nbEngages!==undefined){
+    grille += ligneInfo("Engagés", c.nbEngages+" à ce jour");
+  }
+  grille += ligneInfo("Adresse", echapper(c.adresse));
+  let contact = echapper(c.contact);
+  if(c.telephone) contact += (contact?"<br>":"")+"<a href='tel:"+echapper(c.telephone)+"' style='color:var(--navy);'>"+echapper(c.telephone)+"</a>";
+  if(c.mail)      contact += (contact?"<br>":"")+"<a href='mailto:"+echapper(c.mail)+"' style='color:var(--navy);'>"+echapper(c.mail)+"</a>";
+  grille += ligneInfo("Contact", contact);
+  if(grille) html += "<div class='concours-grille'>"+grille+"</div>";
+
+  if(c.infos) html += "<div class='concours-infos'>"+echapper(c.infos)+"</div>";
+
+  // Boutons
+  html += "<div class='concours-liens'>"
+        + "<a class='btn-lien-concours orange' href='"+echapper(c.lien)+"' target='_blank' rel='noopener'>Détails et engagement &#8599;</a>";
+  const adr = c.adresse || c.lieu;
+  if(adr){
+    html += "<a class='btn-lien-concours' href='https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(adr)+"' target='_blank' rel='noopener'>&#128205; Itinéraire</a>";
+  }
+  html += "</div></div>";
+  return html;
+}
+
+async function loadConcours(){
+  const box = g("concoursListe");
+  if(g("lienTousConcours")) g("lienTousConcours").href = LIEN_CONCOURS_150KM;
+  if(!box) return;
+  if(!CONCOURS_URL){
+    box.innerHTML = "<div class='empty-msg'>Le module concours n'est pas encore branché.<br>En attendant, utilise le lien ci-dessous.</div>";
+    return;
+  }
+  box.innerHTML = "<div class='empty-msg'>Chargement des concours...</div>";
+  try{
+    const liste = await fetchJsonp(CONCOURS_URL);
+    if(!Array.isArray(liste)){ throw new Error((liste && liste.erreur) || "reponse inattendue"); }
+    concoursCharges = true;
+    if(liste.length===0){
+      box.innerHTML = "<div class='empty-msg'>Aucun concours d'agility prévu à moins de 150 km pour le moment.</div>";
+      return;
+    }
+    box.innerHTML = liste.map(function(c, i){ return carteConcours(c, i===0); }).join("");
+  }catch(e){
+    console.log("Erreur loadConcours:", e.message);
+    box.innerHTML = "<div class='empty-msg'>Impossible de charger les concours pour le moment.<br>Réessaie plus tard ou utilise le lien ci-dessous.</div>";
+  }
+}
 
 function renderAdminTable(){
   const tbody=g("adminTable"), empty=g("adminEmpty");
