@@ -191,6 +191,12 @@ tr:hover td{background:var(--gray);}
 .res-chiffres{text-align:right;font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap;}
 .res-chiffres .sf{color:#2E7D32;font-weight:900;}
 @media(max-width:600px){ .res-stats{grid-template-columns:repeat(2,1fr);} }
+.bandeau-engag{margin-bottom:1.2rem;border-radius:var(--radius);padding:1rem 1.2rem;border-left:4px solid #2E7D32;background:#E8F5E9;box-shadow:0 2px 8px rgba(46,125,50,0.12);cursor:pointer;}
+.bandeau-engag:hover{box-shadow:0 4px 14px rgba(46,125,50,0.22);}
+.bandeau-engag-titre{font-size:13px;font-weight:900;color:#2E7D32;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;}
+.bandeau-engag-ligne{font-size:14px;font-weight:700;color:var(--navy);margin-top:4px;}
+.bandeau-engag-ligne span{color:var(--muted);font-weight:600;font-size:13px;}
+.bandeau-engag-lien{font-size:12px;font-weight:800;color:#2E7D32;margin-top:8px;}
 .page{display:none;}
 .page.active{display:block;}
 #authPage.active{display:flex;}
@@ -280,6 +286,9 @@ tr:hover td{background:var(--gray);}
     </div>
     <div class="banniere-msg" id="banniereMsg"></div>
   </div>
+
+  <!-- BANDEAU : engagements qui ouvrent cette semaine -->
+  <div id="bandeauEngagements" style="display:none;"></div>
 
   <div id="calContainer"></div>
 
@@ -719,6 +728,7 @@ onAuthStateChanged(auth, async function(user){
       updateToggleBtn();
     }
     g("calContainer").innerHTML = "<div style='text-align:center;padding:2rem;color:var(--muted);font-size:14px;font-weight:600;'>Chargement...</div>";
+    afficherBandeauEngagements();   // bandeau "engagements qui ouvrent cette semaine"
     cours = await loadCours();
     await loadInscriptions();
     setTimeout(function(){ if(typeof loadMessageFromSheet==="function") loadMessageFromSheet(); }, 100);
@@ -1454,6 +1464,61 @@ function carteConcours(c, estProchain){
   return html;
 }
 
+// Les concours ne sont telecharges qu'une fois, puis partages entre
+// le bandeau de la page principale et l'onglet Concours.
+let promesseConcours = null;
+function getConcours(){
+  if(!promesseConcours){
+    promesseConcours = fetchJsonp(CONCOURS_URL).then(function(liste){
+      if(!Array.isArray(liste)) throw new Error((liste && liste.erreur) || "reponse inattendue");
+      return liste;
+    }).catch(function(e){ promesseConcours = null; throw e; });   // on pourra reessayer
+  }
+  return promesseConcours;
+}
+
+// Date d'ouverture des engagements d'un concours (meme regle que l'etiquette)
+function dateOuverture(c){
+  const jourConcours = parseDate(c.date); jourConcours.setHours(0,0,0,0);
+  return jjmmaaaaVersDate(c.inscriptionsDu) || moinsDeuxMois(jourConcours);
+}
+
+// ===== BANDEAU : engagements qui ouvrent cette semaine (lundi -> dimanche) =====
+async function afficherBandeauEngagements(){
+  const box = g("bandeauEngagements");
+  if(!box || !CONCOURS_URL) return;
+  try{
+    const liste = await getConcours();
+    const lundi = getMondayFromDate(new Date(), 0);                       // lundi 00:00
+    const dimanche = new Date(lundi); dimanche.setDate(lundi.getDate()+6); // dimanche 00:00
+    const aujourdhui = new Date(); aujourdhui.setHours(0,0,0,0);
+
+    const cetteSemaine = liste.filter(function(c){
+      const o = dateOuverture(c);
+      return o >= lundi && o <= dimanche;
+    });
+    if(cetteSemaine.length===0){ box.style.display="none"; return; }
+
+    let html = "<div class='bandeau-engag-titre'>&#128227; Engagements qui ouvrent cette semaine</div>";
+    cetteSemaine.forEach(function(c){
+      const o = dateOuverture(c);
+      const quand = o.getTime()===aujourdhui.getTime() ? "aujourd'hui"
+                  : o < aujourdhui ? "depuis "+o.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})
+                  : o.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+      const dateConcours = parseDate(c.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"long"});
+      html += "<div class='bandeau-engag-ligne'>"+echapper(c.lieu)
+            + "<br><span>Concours le "+echapper(dateConcours)+" · ouverture "+echapper(quand)+"</span></div>";
+    });
+    html += "<div class='bandeau-engag-lien'>Voir le détail dans l'onglet Concours &#8594;</div>";
+    box.innerHTML = "<div class='bandeau-engag'>"+html+"</div>";
+    box.onclick = function(){ afficherOnglet("concours"); };
+    box.style.display = "block";
+  }catch(e){
+    console.log("Erreur bandeau engagements:", e.message);
+    box.style.display = "none";
+  }
+}
+
 async function loadConcours(){
   const box = g("concoursListe");
   if(g("lienTousConcours")) g("lienTousConcours").href = LIEN_CONCOURS_150KM;
@@ -1464,8 +1529,7 @@ async function loadConcours(){
   }
   box.innerHTML = "<div class='empty-msg'>Chargement des concours...</div>";
   try{
-    const liste = await fetchJsonp(CONCOURS_URL);
-    if(!Array.isArray(liste)){ throw new Error((liste && liste.erreur) || "reponse inattendue"); }
+    const liste = await getConcours();
     concoursCharges = true;
     if(liste.length===0){
       box.innerHTML = "<div class='empty-msg'>Aucun concours d'agility prévu à moins de 150 km pour le moment.</div>";
