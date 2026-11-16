@@ -418,7 +418,7 @@ const FBCFG = {
   appId: "1:338841120942:web:bf91c5aaa302bd3f0cfd3f"
 };
 const SHEET = "https://script.google.com/macros/s/AKfycbypnZMxAXXh1z0TOJkEmblOI5npFrcRPijXv0hHx59BQGVfLvQKDndrpueW6Hc-ymKhaA/exec";
-const ADMINS = ["martinezlaetitia7@gmail.com","agility.ccv@gmail.com","blemartelot@yahoo.fr"];
+const ADMINS = ["martinezlaetitia7@gmail.com","agility.ccv@gmail.com","blemartelot@yahoo.fr","coralie.lerusse@laposte.net"];
 
 const fbapp = initializeApp(FBCFG);
 const auth = getAuth(fbapp);
@@ -623,7 +623,7 @@ g("btnLogout").onclick = function(){ signOut(auth); };
 
 onAuthStateChanged(auth, async function(user){
   if(user){
-    me=user; window._me=user; isAdm=ADMINS.includes(user.email);
+    me=user; window._me=user; isAdm=ADMINS.includes((user.email||"").toLowerCase());
     g("authPage").style.display="none"; g("authPage").classList.remove("active");
     g("mainPage").style.display="block"; g("mainPage").classList.add("active");
     window.scrollTo(0,0);
