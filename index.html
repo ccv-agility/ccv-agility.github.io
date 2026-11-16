@@ -743,8 +743,8 @@ onAuthStateChanged(auth, async function(user){
   }
 });
 
-g("btnCalPrev").onclick = function(){ calOffset--; renderCal(); };
-g("btnCalNext").onclick = function(){ calOffset++; renderCal(); };
+g("btnCalPrev").onclick = function(){ calOffset--; renderCal(); afficherBandeauEngagements(); };
+g("btnCalNext").onclick = function(){ calOffset++; renderCal(); afficherBandeauEngagements(); };
 
 function fmtDate(d){ return d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"}); }
 function fmtDateCourt(d){ return d.toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}); }
@@ -1483,31 +1483,38 @@ function dateOuverture(c){
   return jjmmaaaaVersDate(c.inscriptionsDu) || moinsDeuxMois(jourConcours);
 }
 
-// ===== BANDEAU : engagements qui ouvrent cette semaine (lundi -> dimanche) =====
+// ===== BANDEAU : engagements qui ouvrent dans la semaine affichee =====
+// Suit la semaine du calendrier : fleches <- -> = le bandeau change avec.
 async function afficherBandeauEngagements(){
   const box = g("bandeauEngagements");
   if(!box || !CONCOURS_URL) return;
+  const offset = calOffset;                 // semaine affichee (0 = cette semaine)
   try{
     const liste = await getConcours();
-    const lundi = getMondayFromDate(new Date(), 0);                       // lundi 00:00
-    const dimanche = new Date(lundi); dimanche.setDate(lundi.getDate()+6); // dimanche 00:00
+    if(offset !== calOffset) return;        // on a deja change de semaine entre-temps
+    const lundi = getMondayFromDate(new Date(), offset);
+    const dimanche = new Date(lundi); dimanche.setDate(lundi.getDate()+6);
     const aujourdhui = new Date(); aujourdhui.setHours(0,0,0,0);
 
-    const cetteSemaine = liste.filter(function(c){
+    const semaine = liste.filter(function(c){
       const o = dateOuverture(c);
       return o >= lundi && o <= dimanche;
     });
-    if(cetteSemaine.length===0){ box.style.display="none"; return; }
+    if(semaine.length===0){ box.style.display="none"; box.innerHTML=""; return; }
 
-    let html = "<div class='bandeau-engag-titre'>&#128227; Engagements qui ouvrent cette semaine</div>";
-    cetteSemaine.forEach(function(c){
+    const titre = offset===0 ? "Engagements qui ouvrent cette semaine"
+                : offset===1 ? "Engagements qui ouvrent la semaine prochaine"
+                : "Engagements qui ouvrent cette semaine-là";
+    let html = "<div class='bandeau-engag-titre'>&#128227; "+titre+"</div>";
+    semaine.forEach(function(c){
       const o = dateOuverture(c);
-      const quand = o.getTime()===aujourdhui.getTime() ? "aujourd'hui"
-                  : o < aujourdhui ? "depuis "+o.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})
-                  : o.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+      const jour = o.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+      const quand = o.getTime()===aujourdhui.getTime() ? "ouverture aujourd'hui"
+                  : o < aujourdhui ? "ouvert depuis le "+jour
+                  : "ouverture le "+jour;
       const dateConcours = parseDate(c.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"long"});
       html += "<div class='bandeau-engag-ligne'>"+echapper(c.lieu)
-            + "<br><span>Concours le "+echapper(dateConcours)+" · ouverture "+echapper(quand)+"</span></div>";
+            + "<br><span>Concours le "+echapper(dateConcours)+" · "+echapper(quand)+"</span></div>";
     });
     html += "<div class='bandeau-engag-lien'>Voir le détail dans l'onglet Concours &#8594;</div>";
     box.innerHTML = "<div class='bandeau-engag'>"+html+"</div>";
