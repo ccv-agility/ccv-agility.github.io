@@ -169,6 +169,10 @@ tr:hover td{background:var(--gray);}
 .concours-liens{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
 .btn-lien-concours{display:inline-block;font-size:12px;font-weight:800;padding:7px 14px;border-radius:20px;text-decoration:none;background:var(--navy-light);color:var(--navy);border:none;cursor:pointer;font-family:var(--font);}
 .btn-lien-concours.orange{background:var(--orange);color:white;}
+.badge-engag{display:inline-block;font-size:12px;font-weight:800;padding:4px 12px;border-radius:20px;}
+.badge-engag.ouvert{background:#E8F5E9;color:#2E7D32;}
+.badge-engag.bientot{background:var(--navy-light);color:var(--navy);}
+.badge-engag.clos{background:var(--red-light);color:var(--red);}
 .page{display:none;}
 .page.active{display:block;}
 #authPage.active{display:flex;}
@@ -1337,6 +1341,35 @@ function fmtDateFr(jjmmaaaa){
   return d.toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
 }
 
+// Statut des engagements : ouverts / bientot / clos
+// Regle : ouverture 2 mois pile avant le concours, cloture le jour du concours.
+// Si le site donne ses propres dates, on les utilise en priorite.
+function jjmmaaaaVersDate(t){
+  if(!t) return null;
+  const p = t.split("-");
+  return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+}
+function moinsDeuxMois(d){
+  const r = new Date(d.getFullYear(), d.getMonth()-2, 1);
+  const dernierJour = new Date(r.getFullYear(), r.getMonth()+1, 0).getDate();  // ex : 28 en fevrier
+  r.setDate(Math.min(d.getDate(), dernierJour));
+  return r;
+}
+function statutEngagement(c){
+  const jourConcours = parseDate(c.date); jourConcours.setHours(0,0,0,0);
+  const ouverture = jjmmaaaaVersDate(c.inscriptionsDu) || moinsDeuxMois(jourConcours);
+  const cloture   = jjmmaaaaVersDate(c.inscriptionsAu) || jourConcours;
+  const aujourdhui = new Date(); aujourdhui.setHours(0,0,0,0);
+  const fmt = function(d){ return d.toLocaleDateString("fr-FR",{day:"numeric",month:"long"}); };
+  if(aujourdhui < ouverture){
+    return "<span class='badge-engag bientot'>&#128339; Engagements le "+fmt(ouverture)+"</span>";
+  }
+  if(aujourdhui <= cloture){
+    return "<span class='badge-engag ouvert'>&#9989; Engagements ouverts</span>";
+  }
+  return "<span class='badge-engag clos'>Engagements clos</span>";
+}
+
 function ligneInfo(label, valeur){
   if(!valeur) return "";
   return "<div class='lbl'>"+label+"</div><div class='val'>"+valeur+"</div>";
@@ -1348,7 +1381,8 @@ function carteConcours(c, estProchain){
   if(estProchain) html += "<div class='concours-tag'>Prochain concours</div>";
   html += "<div class='concours-date'>"+echapper(dateTxt)+"</div>"
         + "<div class='concours-lieu'>"+echapper(c.lieu)+"</div>"
-        + "<div class='concours-type'>"+echapper(c.type)+"</div>";
+        + "<div class='concours-type'>"+echapper(c.type)+"</div>"
+        + "<div style='margin-top:8px;'>"+statutEngagement(c)+"</div>";
 
   // Tableau d'infos (une ligne n'apparait que si l'info existe)
   let grille = "";
