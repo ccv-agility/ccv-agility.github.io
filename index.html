@@ -1364,10 +1364,13 @@ function statutEngagement(c){
   if(aujourdhui < ouverture){
     return "<span class='badge-engag bientot'>&#128339; Engagements le "+fmt(ouverture)+"</span>";
   }
+  // Nombre d'engages (fourni par le site quand les engagements sont ouverts)
+  const nb = (c.nbEngages!==null && c.nbEngages!==undefined)
+    ? " &middot; <b>"+c.nbEngages+"</b> engagé"+(c.nbEngages>1?"s":"") : "";
   if(aujourdhui <= cloture){
-    return "<span class='badge-engag ouvert'>&#9989; Engagements ouverts</span>";
+    return "<span class='badge-engag ouvert'>&#9989; Engagements ouverts"+nb+"</span>";
   }
-  return "<span class='badge-engag clos'>Engagements clos</span>";
+  return "<span class='badge-engag clos'>Engagements clos"+nb+"</span>";
 }
 
 function ligneInfo(label, valeur){
@@ -1393,9 +1396,6 @@ function carteConcours(c, estProchain){
   grille += ligneInfo("Engagement", echapper(c.prix));
   if(c.inscriptionsDu && c.inscriptionsAu){
     grille += ligneInfo("Inscriptions", "du "+fmtDateFr(c.inscriptionsDu)+" au "+fmtDateFr(c.inscriptionsAu));
-  }
-  if(c.nbEngages!==null && c.nbEngages!==undefined){
-    grille += ligneInfo("Engagés", c.nbEngages+" à ce jour");
   }
   grille += ligneInfo("Adresse", echapper(c.adresse));
   let contact = echapper(c.contact);
