@@ -173,6 +173,24 @@ tr:hover td{background:var(--gray);}
 .badge-engag.ouvert{background:#E8F5E9;color:#2E7D32;}
 .badge-engag.bientot{background:var(--navy-light);color:var(--navy);}
 .badge-engag.clos{background:var(--red-light);color:var(--red);}
+.res-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem;}
+.res-stat{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 6px;text-align:center;}
+.res-stat .n{font-size:22px;font-weight:900;color:var(--navy);}
+.res-stat .t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;}
+.res-concours{background:white;border-radius:var(--radius);border:1px solid var(--border);padding:1rem 1.1rem;margin-bottom:0.8rem;}
+.res-concours-titre{font-size:14px;font-weight:900;color:var(--navy);}
+.res-concours-sous{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px;text-transform:capitalize;}
+.res-type{display:inline-block;font-size:11px;font-weight:900;color:white;background:var(--orange);padding:2px 9px;border-radius:20px;margin-left:6px;vertical-align:middle;text-transform:none;}
+.res-ligne{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--gray);margin-bottom:5px;font-size:13px;}
+.res-place{min-width:54px;text-align:center;font-weight:900;font-size:13px;border-radius:20px;padding:3px 6px;background:white;color:var(--navy);}
+.res-place.podium{background:#FFF4D6;color:#8A6200;}
+.res-place.eli{background:var(--red-light);color:var(--red);font-size:11px;}
+.res-qui{flex:1;min-width:0;}
+.res-qui b{color:var(--navy);}
+.res-epreuve{font-size:11px;color:var(--muted);font-weight:700;}
+.res-chiffres{text-align:right;font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap;}
+.res-chiffres .sf{color:#2E7D32;font-weight:900;}
+@media(max-width:600px){ .res-stats{grid-template-columns:repeat(2,1fr);} }
 .page{display:none;}
 .page.active{display:block;}
 #authPage.active{display:flex;}
@@ -240,6 +258,7 @@ tr:hover td{background:var(--gray);}
   <div class="onglets">
     <button class="onglet active" id="btnOngletCours">&#128197; Cours</button>
     <button class="onglet" id="btnOngletConcours">&#127942; Concours</button>
+    <button class="onglet" id="btnOngletResultats">&#129351; Résultats</button>
   </div>
 
   <!-- ===== ONGLET COURS ===== -->
@@ -347,6 +366,22 @@ tr:hover td{background:var(--gray);}
       Voir le calendrier complet sur sportscanins.fr &#8599;
     </a>
   </div><!-- fin onglet Concours -->
+
+  <!-- ===== ONGLET RESULTATS ===== -->
+  <div id="ongletResultats" style="display:none;">
+    <div class="cal-nav">
+      <h2>Résultats du club en concours</h2>
+    </div>
+    <p style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:1rem;">
+      Concours à 150 km de Vannes + finales, sélectifs et championnats. Source : sportscanins.fr.
+    </p>
+    <div class="fg" style="margin-bottom:1rem;">
+      <label>Binôme</label>
+      <select id="filtreBinome"><option value="">Tout le club</option></select>
+    </div>
+    <div id="resultatsStats"></div>
+    <div id="resultatsListe"><div class="empty-msg">Chargement des résultats...</div></div>
+  </div><!-- fin onglet Resultats -->
 
 </div></div><!-- MODALE ADMIN GESTION INSCRITS -->
 <div class="modal-overlay" id="modalAdminOverlay">
@@ -1321,15 +1356,17 @@ function echapper(s){
 
 // --- Onglets Cours / Concours ---
 function afficherOnglet(nom){
-  g("ongletCours").style.display    = nom==="cours"    ? "block" : "none";
-  g("ongletConcours").style.display = nom==="concours" ? "block" : "none";
-  g("btnOngletCours").classList.toggle("active",    nom==="cours");
-  g("btnOngletConcours").classList.toggle("active", nom==="concours");
+  ["Cours","Concours","Resultats"].forEach(function(o){
+    g("onglet"+o).style.display = (nom===o.toLowerCase()) ? "block" : "none";
+    g("btnOnglet"+o).classList.toggle("active", nom===o.toLowerCase());
+  });
   window.scrollTo(0,0);
-  if(nom==="concours" && !concoursCharges) loadConcours();   // on charge au premier clic
+  if(nom==="concours"  && !concoursCharges)  loadConcours();    // on charge au premier clic
+  if(nom==="resultats" && !resultatsCharges) loadResultats();
 }
-g("btnOngletCours").onclick    = function(){ afficherOnglet("cours"); };
-g("btnOngletConcours").onclick = function(){ afficherOnglet("concours"); };
+g("btnOngletCours").onclick     = function(){ afficherOnglet("cours"); };
+g("btnOngletConcours").onclick  = function(){ afficherOnglet("concours"); };
+g("btnOngletResultats").onclick = function(){ afficherOnglet("resultats"); };
 
 let concoursCharges = false;
 
@@ -1439,6 +1476,121 @@ async function loadConcours(){
     console.log("Erreur loadConcours:", e.message);
     box.innerHTML = "<div class='empty-msg'>Impossible de charger les concours pour le moment.<br>Réessaie plus tard ou utilise le lien ci-dessous.</div>";
   }
+}
+
+// ===== ONGLET RESULTATS =====
+let resultatsCharges = false;
+let tousResultats = [];
+
+// "LE MARTELOT BÉnÉdicte" -> "Bénédicte Le Martelot"   |   "UNIX" -> "Unix"
+function joliNom(t){
+  return String(t||"").toLowerCase().replace(/(^|[\s\-'])([a-zà-ÿ])/g, function(x,sep,l){ return sep+l.toUpperCase(); });
+}
+function joliConducteur(t){
+  // Sur le site : NOM en majuscules puis Prénom. On remet Prénom Nom.
+  const mots = String(t||"").trim().split(/\s+/);
+  const nom = [], prenom = [];
+  mots.forEach(function(m){ (m===m.toUpperCase() && prenom.length===0 ? nom : prenom).push(m); });
+  if(prenom.length===0) return joliNom(t);
+  return joliNom(prenom.join(" "))+" "+joliNom(nom.join(" "));
+}
+function cleBinome(r){ return r.conducteur+"|"+r.chien; }
+function estElimine(r){ return /ELI|ABS|DIS/i.test(r.qualificatif) || r.classement==="-" && !r.temps; }
+function estSansFaute(r){ return !estElimine(r) && r.temps!=="" && (r.penalites===""||parseFloat(String(r.penalites).replace(",","."))===0); }
+
+async function loadResultats(){
+  const box = g("resultatsListe");
+  if(!CONCOURS_URL){ box.innerHTML="<div class='empty-msg'>Module non branché.</div>"; return; }
+  box.innerHTML = "<div class='empty-msg'>Chargement des résultats...</div>";
+  try{
+    const data = await fetchJsonp(CONCOURS_URL+"?type=resultats");
+    if(!Array.isArray(data)) throw new Error((data&&data.erreur)||"reponse inattendue");
+    tousResultats = data;
+    resultatsCharges = true;
+    remplirFiltreBinome();
+    renderResultats();
+  }catch(e){
+    console.log("Erreur loadResultats:", e.message);
+    box.innerHTML = "<div class='empty-msg'>Impossible de charger les résultats pour le moment.</div>";
+  }
+}
+
+function remplirFiltreBinome(){
+  const sel = g("filtreBinome");
+  const vus = {};
+  tousResultats.forEach(function(r){ vus[cleBinome(r)] = r; });
+  const cles = Object.keys(vus).sort(function(a,b){
+    return joliConducteur(vus[a].conducteur).localeCompare(joliConducteur(vus[b].conducteur),"fr");
+  });
+  sel.innerHTML = "<option value=''>Tout le club</option>";
+  cles.forEach(function(k){
+    const o = document.createElement("option");
+    o.value = k;
+    o.textContent = joliConducteur(vus[k].conducteur)+" – "+joliNom(vus[k].chien);
+    sel.appendChild(o);
+  });
+  sel.onchange = renderResultats;
+}
+
+function renderResultats(){
+  const filtre = g("filtreBinome").value;
+  const liste = tousResultats.filter(function(r){ return !filtre || cleBinome(r)===filtre; });
+  const box = g("resultatsListe"), stats = g("resultatsStats");
+  if(liste.length===0){
+    stats.innerHTML = "";
+    box.innerHTML = "<div class='empty-msg'>Aucun résultat pour l'instant.<br>Le premier remplissage prend quelques heures.</div>";
+    return;
+  }
+
+  // Petites stats (comme un NB.SI dans Excel)
+  const nbParcours = liste.length;
+  const nbSansFaute = liste.filter(estSansFaute).length;
+  const nbPodiums = liste.filter(function(r){ return ["1","2","3"].indexOf(r.classement)>-1; }).length;
+  const nbConcours = Object.keys(liste.reduce(function(o,r){ o[r.idConcours]=1; return o; },{})).length;
+  stats.innerHTML = "<div class='res-stats'>"
+    + "<div class='res-stat'><div class='n'>"+nbConcours+"</div><div class='t'>Concours</div></div>"
+    + "<div class='res-stat'><div class='n'>"+nbParcours+"</div><div class='t'>Parcours</div></div>"
+    + "<div class='res-stat'><div class='n'>"+nbSansFaute+"</div><div class='t'>Sans faute</div></div>"
+    + "<div class='res-stat'><div class='n'>"+nbPodiums+"</div><div class='t'>Podiums</div></div>"
+    + "</div>";
+
+  // Regroupement par concours, du plus recent au plus ancien
+  const groupes = {}, ordre = [];
+  liste.forEach(function(r){
+    if(!groupes[r.idConcours]){ groupes[r.idConcours] = {info:r, lignes:[]}; ordre.push(r.idConcours); }
+    groupes[r.idConcours].lignes.push(r);
+  });
+  ordre.sort(function(a,b){ return groupes[a].info.date < groupes[b].info.date ? 1 : -1; });
+
+  let html = "";
+  ordre.forEach(function(id){
+    const gr = groupes[id], c = gr.info;
+    const dateTxt = parseDate(c.date).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+    const special = c.typeConcours && !/^Concours (Tous Grades|Sp[ée]cial D[ée]butants)/i.test(c.typeConcours);
+    html += "<div class='res-concours'>"
+      + "<div class='res-concours-titre'>"+echapper(c.concours)+(special?"<span class='res-type'>"+echapper(c.typeConcours)+"</span>":"")+"</div>"
+      + "<div class='res-concours-sous'>"+echapper(dateTxt)+"</div>";
+    gr.lignes.forEach(function(r){
+      let place;
+      if(estElimine(r)) place = "<span class='res-place eli'>Éliminé</span>";
+      else {
+        const n = parseInt(r.classement,10);
+        const medaille = n===1?"&#129351; ":n===2?"&#129352; ":n===3?"&#129353; ":"";
+        place = "<span class='res-place"+(n<=3?" podium":"")+"'>"+medaille+(isNaN(n)?echapper(r.classement):n+(n===1?"er":"e"))+"</span>";
+      }
+      let chiffres = "";
+      if(!estElimine(r) && r.temps){
+        chiffres = echapper(r.temps)+" s · "+echapper(r.vitesse)+" m/s<br>"
+          + (estSansFaute(r) ? "<span class='sf'>Sans faute</span>" : echapper(r.penalites)+" pts pén.");
+      }
+      html += "<div class='res-ligne'>"+place
+        + "<div class='res-qui'><b>"+echapper(joliConducteur(r.conducteur))+"</b> avec <b>"+echapper(joliNom(r.chien))+"</b>"
+        + "<div class='res-epreuve'>"+echapper(r.epreuve)+(r.categorie?" · cat. "+echapper(r.categorie):"")+(r.juge?" · juge "+echapper(joliConducteur(r.juge)):"")+"</div></div>"
+        + "<div class='res-chiffres'>"+chiffres+"</div></div>";
+    });
+    html += "</div>";
+  });
+  box.innerHTML = html;
 }
 
 function renderAdminTable(){
